@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cash Dash</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:"Trebuchet MS",system-ui,sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
+  canvas{display:block;width:100vw;height:100vh}
+  #hud{position:fixed;top:0;left:0;right:0;display:none;justify-content:space-between;align-items:flex-start;padding:12px 16px;font-weight:bold;font-size:18px;text-shadow:0 2px 0 #0009;pointer-events:none}
+  #hud.show{display:flex}
+  #hudCash{color:#7CFC8A;font-size:28px}
+  #hudPower{position:fixed;top:52px;left:0;right:0;text-align:center;font-size:16px;font-weight:bold;text-shadow:0 2px 0 #0009;pointer-events:none}
+  .screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(25,12,60,.84);padding:20px;text-align:center;overflow-y:auto;box-sizing:border-box}
+  .screen.show{display:flex}
+  #shop{justify-content:flex-start}
+  h1{font-size:clamp(2.6rem,11vw,4.6rem);margin:0;color:#ffe14d;text-shadow:0 5px 0 #c9a800}
+  h2{margin:0;font-size:2rem;color:#ffe14d}
+  .btn{font:inherit;font-size:1.3rem;font-weight:bold;padding:14px 34px;border:none;border-radius:999px;background:#ffe14d;color:#333;box-shadow:0 5px 0 #c9a800;cursor:pointer}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #c9a800}
+  .btn.green{background:#5ee07a;box-shadow:0 5px 0 #2f9e48}
+  .btn.blue{background:#6cc4ff;box-shadow:0 5px 0 #2f86c0}
+  .btn.small{font-size:1rem;padding:9px 16px;white-space:nowrap}
+  .btn:disabled{opacity:.4}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .bank{font-size:1.8rem;color:#7CFC8A;font-weight:bold}
+  .hint{opacity:.8;font-size:.95rem;max-width:420px}
+  .stats{font-size:1.2rem;line-height:1.7}
+  .stats b{color:#ffe14d}
+  #shopList{width:min(540px,100%);display:flex;flex-direction:column;gap:10px;padding-bottom:20px}
+  .sec{text-align:left;font-weight:bold;color:#ffe14d;margin-top:8px;font-size:1.1rem}
+  .card{background:#ffffff1c;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:left}
+  .card .info{flex:1}
+  .card .name{font-weight:bold;font-size:1.1rem}
+  .card .lvl{font-size:.8rem;background:#ffffff30;border-radius:6px;padding:1px 6px;margin-left:4px}
+  .card .desc{opacity:.85;font-size:.9rem;margin-top:2px}
+  .card .icon{font-size:2rem}
+  .skins{display:flex;flex-wrap:wrap;gap:10px}
+  .skin{width:70px;height:70px;border-radius:14px;border:3px solid transparent;display:flex;align-items:flex-end;justify-content:center;font-size:12px;font-weight:bold;cursor:pointer;padding-bottom:5px;box-sizing:border-box;color:#fff;text-shadow:0 1px 2px #000}
+  .skin.sel{border-color:#fff;box-shadow:0 0 12px #fff8}
+  .newbest{color:#ff5ca8;font-weight:bold;font-size:1.3rem}
+  #back{position:fixed;top:10px;left:10px;font-size:.9rem;color:#fff;opacity:.7;text-decoration:none;z-index:5}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="hudDist">0m</div>
+  <div id="hudCash">$0</div>
+  <div id="hudCoins">🪙 0</div>
+</div>
+<div id="hudPower"></div>
+
+<div class="screen show" id="menu">
+  <a id="back" href="index.html">← Oh Games</a>
+  <h1>Cash Dash</h1>
+  <div class="bank" id="menuCash">$0</div>
+  <div id="menuBest" class="hint"></div>
+  <div id="menuItems" class="hint"></div>
+  <div class="row">
+    <button class="btn" data-go="play">▶ Play</button>
+    <button class="btn green" data-go="shop">🛒 Shop</button>
+  </div>
+  <div class="hint">Swipe or use the arrow keys.<br>⬅️ ➡️ switch lanes · ⬆️ jump over barriers · ⬇️ slide under bars.<br>Grab coins for cash, then spend it on upgrades in the shop!</div>
+</div>
+
+<div class="screen" id="shop">
+  <h2>🛒 Shop</h2>
+  <div class="bank" id="shopCash">$0</div>
+  <div id="shopList"></div>
+  <div class="row" style="padding-bottom:30px">
+    <button class="btn" data-go="play">▶ Play</button>
+    <button class="btn blue" data-go="menu">Menu</button>
+  </div>
+</div>
+
+<div class="screen" id="over">
+  <h2>💥 Crashed!</h2>
+  <div id="overBest"></div>
+  <div class="stats" id="overStats"></div>
+  <div class="bank" id="overCash"></div>
+  <div class="row">
+    <button class="btn" data-go="play">↻ Run Again</button>
+    <button class="btn green" data-go="shop">🛒 Shop</button>
+  </div>
+</div>
+
+<script>
+// ---------- Shop data (Gimkit-style upgrades) ----------
+const UP = {
+  money:  {name:'Money per Coin', desc:'Cash each coin is worth', vals:[1,2,5,10,25,50,100,250,500,1000], costs:[10,60,300,1200,5000,20000,80000,300000,1000000], f:v=>'$'+fmt(v)},
+  streak: {name:'Streak Bonus', desc:'Extra cash per coin for every 5 coins in a row', vals:[0,1,3,10,25,75,200], costs:[25,200,1500,8000,40000,200000], f:v=>'+$'+fmt(v)},
+  magnet: {name:'Magnet Power', desc:'How long a magnet lasts', vals:[5,7,9,12,16,20], costs:[40,300,2000,10000,50000], f:v=>v+'s'},
+  revive: {name:'Insurance', desc:'Free revives every run', vals:[0,1,2,3], costs:[150,3000,40000], f:v=>v+'x'},
+};
+const ITEMS = {
+  shield: {name:'Shield', desc:'Blocks one crash on your next run', cost:30, icon:'🛡️'},
+  boost:  {name:'Rocket Start', desc:'Blast off at double speed, smashing everything for 4s', cost:60, icon:'🚀'},
+};
+const SKINS = [
+  {id:'red',c:'#ff4d4d',cost:0},{id:'blue',c:'#3d8bff',cost:100},{id:'green',c:'#3ddc84',cost:250},
+  {id:'purple',c:'#a45cff',cost:600},{id:'orange',c:'#ff9a3d',cost:1500},{id:'pink',c:'#ff5ca8',cost:4000},
+  {id:'gold',c:'#ffd700',cost:25000},{id:'rainbow',c:'rainbow',cost:100000},
+];
+
+// ---------- Save ----------
+const KEY = 'cashdash_v1';
+function defSave(){ return {cash:0,best:0,up:{money:0,streak:0,magnet:0,revive:0},items:{shield:0,boost:0},skins:['red'],skin:'red'}; }
+let S = defSave();
+try {
+  const d = JSON.parse(localStorage.getItem(KEY));
+  if (d) { const b = defSave(); S = Object.assign(b, d); S.up = Object.assign(defSave().up, d.up); S.items = Object.assign(defSave().items, d.items); }
+} catch(e) {}
+function persist(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+
+function fmt(n){
+  n = Math.floor(n);
+  if (n >= 1e9) return (n/1e9).toFixed(n>=1e10?0:1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(n>=1e7?0:1)+'M';
+  if (n >= 1e4) return (n/1e3).toFixed(n>=1e5?0:1)+'K';
+  return n.toLocaleString();
+}
+const $ = id => document.getElementById(id);
+
+// ---------- Canvas ----------
+const cv = $('c'), ctx = cv.getContext('2d');
+let W, H, LW, HOR, BASE, EYE;
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  LW = Math.min(W*0.3, H*0.24);
+  HOR = H*0.33; BASE = H*0.86;
+  EYE = (BASE-HOR)/LW;
+}
+addEventListener('resize', resize); resize();
+
+const D = 4;
+function proj(x, z, h){
+  const s = D / (Math.max(z, -D*0.75) + D);
+  return [W/2 + x*LW*s, HOR + (BASE-HOR)*s - h*LW*s, s];
+}
+function quad(a,b,c,d,col){
+  ctx.fillStyle = col; ctx.beginPath();
+  ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(c[0],c[1]); ctx.lineTo(d[0],d[1]);
+  ctx.closePath(); ctx.fill();
+}
+function cube(x0,x1,z0,z1,h0,h1,front,top,side){
+  z0 = Math.max(z0, -2.5); if (z1 <= z0) return;
+  if (x1 < 0) quad(proj(x1,z0,h0),proj(x1,z1,h0),proj(x1,z1,h1),proj(x1,z0,h1),side);
+  if (x0 > 0) quad(proj(x0,z0,h0),proj(x0,z1,h0),proj(x0,z1,h1),proj(x0,z0,h1),side);
+  if (h1 < EYE) quad(proj(x0,z0,h1),proj(x1,z0,h1),proj(x1,z1,h1),proj(x0,z1,h1),top);
+  quad(proj(x0,z0,h0),proj(x1,z0,h0),proj(x1,z0,h1),proj(x0,z0,h1),front);
+}
+function hash(n){ const x = Math.sin(n*127.1+3.7)*43758.5453; return x - Math.floor(x); }
+function skinColor(t){
+  const sk = SKINS.find(s=>s.id===S.skin) || SKINS[0];
+  return sk.c === 'rainbow' ? `hsl(${(t*200)%360},90%,60%)` : sk.c;
+}
+
+// ---------- Game ----------
+let state = 'menu';
+let G = blankRun();
+
+function blankRun(){
+  return {dist:0,speed:14,px:0,lane:0,y:0,vy:0,slide:0,objs:[],nextPos:30,busy:{'-1':-99,'0':-99,'1':-99},
+    coins:0,earned:0,streak:0,streakT:0,magnet:0,shield:0,inv:0,boost:0,revives:UP.revive.vals[S.up.revive],
+    floats:[],t:0,shake:0};
+}
+function startRun(){
+  G = blankRun();
+  if (S.items.shield > 0) { S.items.shield--; G.shield = 1; }
+  if (S.items.boost > 0) { S.items.boost--; G.boost = 4; }
+  persist();
+  state = 'play';
+  show(null);
+}
+
+function spawnRow(){
+  const g = G, pos = g.nextPos;
+  g.nextPos += 11 + Math.random()*6;
+  const lanes = [-1,0,1];
+  const isBusy = l => g.busy[l] >= pos - 2;
+  const free = lanes.filter(l => !isBusy(l));
+  const safe = free[Math.floor(Math.random()*free.length)];
+  let anyTrain = lanes.some(isBusy);
+  for (const l of lanes){
+    if (l === safe || isBusy(l)) continue;
+    if (Math.random() < 0.65){
+      if (l !== 0 && !anyTrain && Math.random() < 0.4){
+        const len = 8 + Math.random()*10;
+        g.objs.push({type:'train',lane:l,pos,len,hue:Math.floor(Math.random()*4)});
+        g.busy[l] = pos + len; anyTrain = true;
+      } else {
+        g.objs.push({type: Math.random()<0.5 ? 'block' : 'bar', lane:l, pos, len: 0.4});
+      }
+    }
+  }
+  const r = Math.random();
+  if (r < 0.07) g.objs.push({type: Math.random()<0.65 ? 'magnetP' : 'shieldP', lane:safe, pos:pos+2, h:0.7});
+  else if (r < 0.88) for (let i=0;i<5;i++) g.objs.push({type:'coin', lane:safe, pos:pos+i*1.6-1, h:0.55});
+}
+
+function addFloat(text, color){
+  const p = proj(G.px, 0, G.y + 1.6);
+  G.floats.push({text, color, x:p[0] + (Math.random()-0.5)*30, y:p[1], life:0.9});
+}
+
+function collect(o){
+  const g = G;
+  o.dead = true;
+  if (o.type === 'coin'){
+    g.coins++; g.streak++; g.streakT = 1.3;
+    const bonus = UP.streak.vals[S.up.streak] * Math.floor(g.streak/5);
+    const val = UP.money.vals[S.up.money] + bonus;
+    g.earned += val;
+    addFloat('+$'+fmt(val), bonus>0 ? '#ffe14d' : '#7CFC8A');
+  } else if (o.type === 'magnetP'){
+    g.magnet = UP.magnet.vals[S.up.magnet]; addFloat('🧲 MAGNET!', '#ff7070');
+  } else if (o.type === 'shieldP'){
+    g.shield = 1; addFloat('🛡️ SHIELD!', '#6cc4ff');
+  }
+}
+
+function crash(o){
+  const g = G;
+  if (g.boost > 0){ o.dead = true; g.shake = 0.15; return; }
+  if (g.inv > 0){ o.hit = true; return; }
+  o.hit = true;
+  g.shake = 0.3; g.streak = 0;
+  if (g.shield){ g.shield = 0; g.inv = 1.3; addFloat('Shield broke!', '#6cc4ff'); return; }
+  if (g.revives > 0){
+    g.revives--; g.inv = 2;
+    for (const ob of g.objs) if (ob.type!=='coin' && ob.pos - g.dist < 30) ob.dead = true;
+    addFloat('🧾 Insurance!', '#ffe14d'); return;
+  }
+  gameOver();
+}
+
+function gameOver(){
+  state = 'over';
+  const g = G, m = Math.floor(g.dist);
+  const isBest = m > S.best;
+  if (isBest) S.best = m;
+  S.cash += g.earned;
+  persist();
+  $('overBest').innerHTML = isBest ? '<div class="newbest">⭐ New best distance! ⭐</div>' : '';
+  $('overStats').innerHTML = `Distance: <b>${fmt(m)}m</b><br>Coins: <b>${fmt(g.coins)}</b><br>Best: <b>${fmt(S.best)}m</b>`;
+  $('overCash').textContent = '+$' + fmt(g.earned) + ' earned';
+  setTimeout(()=>{ if (state==='over') show('over'); }, 600);
+}
+
+function update(dt){
+  const g = G;
+  g.t += dt;
+  g.speed = Math.min(34, 14 + g.t*0.3);
+  const sp = g.speed * (g.boost > 0 ? 2 : 1);
+  g.dist += sp*dt;
+  g.px += (g.lane - g.px) * Math.min(1, dt*14);
+  if (g.y > 0 || g.vy > 0){ g.vy -= 38*dt; g.y += g.vy*dt; if (g.y <= 0){ g.y = 0; g.vy = 0; } }
+  if (g.slide > 0) g.slide -= dt;
+  for (const k of ['magnet','inv','boost','shake']) if (g[k] > 0) g[k] = Math.max(0, g[k]-dt);
+  g.streakT -= dt; if (g.streakT <= 0) g.streak = 0;
+  if (g.boost > 0 && g.boost < 0.05) g.inv = 1;
+
+  while (g.nextPos - g.dist < 85) spawnRow();
+
+  const pl = Math.round(g.px);
+  for (const o of g.objs){
+    if (o.dead) continue;
+    const rel = o.pos - g.dist;
+    if (o.type === 'coin' || o.type === 'magnetP' || o.type === 'shieldP'){
+      if (o.type === 'coin' && g.magnet > 0 && rel < 8 && rel > -0.6) o.fly = true;
+      if (o.fly){
+        o.lane += (g.px - o.lane) * Math.min(1, dt*12);
+        o.h += (g.y + 0.6 - o.h) * Math.min(1, dt*12);
+        o.pos -= rel * Math.min(1, dt*10);
+        if (Math.abs(o.pos - g.dist) < 0.8) collect(o);
+      } else if (Math.round(o.lane) === pl && rel < 0.6 && rel > -0.6) collect(o);
+      continue;
+    }
+    if (o.hit || o.lane !== pl) continue;
+    if (rel < 0.45 && rel + o.len > -0.25){
+      if (o.type === 'block' && g.y < 0.85) crash(o);
+      else if (o.type === 'bar' && !(g.slide > 0 && g.y < 0.5)) crash(o);
+      else if (o.type === 'train') crash(o);
+      if (state !== 'play') return;
+    }
+  }
+  g.objs = g.objs.filter(o => !o.dead && o.pos + (o.len||0) - g.dist > -3);
+
+  for (const f of g.floats){ f.life -= dt; f.y -= 70*dt; }
+  g.floats = g.floats.filter(f => f.life > 0);
+  updateHud();
+}
+
+let hudCache = '';
+function updateHud(){
+  const g = G;
+  const pw = [];
+  if (g.boost > 0) pw.push('🚀 ' + g.boost.toFixed(1));
+  if (g.magnet > 0) pw.push('🧲 ' + g.magnet.toFixed(1));
+  if (g.shield) pw.push('🛡️');
+  if (g.revives > 0) pw.push('🧾x' + g.revives);
+  if (g.streak >= 5) pw.push('🔥 Streak ' + g.streak);
+  const s = [Math.floor(g.dist), g.earned, g.coins, pw.join('   ')].join('|');
+  if (s === hudCache) return; hudCache = s;
+  $('hudDist').textContent = fmt(g.dist) + 'm';
+  $('hudCash').textContent = '$' + fmt(g.earned);
+  $('hudCoins').textContent = '🪙 ' + fmt(g.coins);
+  $('hudPower').textContent = pw.join('   ');
+}
+
+// ---------- Drawing ----------
+const TRAIN_COLS = [['#d63a3a','#ef6b6b','#9e2424'],['#2f6fd6','#5d93ef','#1f4c9e'],['#2ea65a','#58cc82','#1d7a40'],['#e0a020','#f5c24f','#a87410']];
+const BLD_COLS = ['#8fa3bf','#c7a07a','#a37fbf','#7fbfae','#bf8f8f','#d0c27a'];
+
+function draw(){
+  const g = G;
+  ctx.save();
+  if (g.shake > 0) ctx.translate((Math.random()-0.5)*14*g.shake/0.3, (Math.random()-0.5)*14*g.shake/0.3);
+
+  // sky + ground
+  const sky = ctx.createLinearGradient(0,0,0,HOR);
+  sky.addColorStop(0,'#4aa8ff'); sky.addColorStop(1,'#c9ecff');
+  ctx.fillStyle = sky; ctx.fillRect(-20,-20,W+40,HOR+20);
+  ctx.fillStyle = '#fff6b0'; ctx.beginPath(); ctx.arc(W*0.8, HOR*0.35, 34, 0, 7); ctx.fill();
+  ctx.fillStyle = '#5aa55a'; ctx.fillRect(-20,HOR,W+40,H-HOR+20);
+
+  const far = 140;
+  quad(proj(-1.65,-3,0),proj(1.65,-3,0),proj(1.65,far,0),proj(-1.65,far,0),'#7a5c44');
+
+  // ties
+  ctx.strokeStyle = '#4e3826';
+  for (let k=0;k<70;k++){
+    const z = k*2 - (g.dist%2); if (z < -3) continue;
+    const s = proj(0,z,0)[2]; ctx.lineWidth = Math.max(1, 7*s);
+    for (const l of [-1,0,1]){
+      const a = proj(l-0.42,z,0), b = proj(l+0.42,z,0);
+      ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+    }
+  }
+  // rails
+  ctx.strokeStyle = '#c9ced8'; ctx.lineWidth = 3;
+  for (const l of [-1,0,1]) for (const o of [-0.3,0.3]){
+    const a = proj(l+o,-3,0), b = proj(l+o,far,0);
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+  }
+
+  // buildings
+  for (let k=15;k>=0;k--){
+    const idx = Math.floor(g.dist/9) + k, z = idx*9 - g.dist;
+    if (z < -3) continue;
+    for (const side of [-1,1]){
+      const hh = 2 + hash(idx*2+(side>0?1:0))*5;
+      const col = BLD_COLS[Math.floor(hash(idx*3+side)*BLD_COLS.length)];
+      const x0 = side<0 ? -4.4 : 2.2, x1 = side<0 ? -2.2 : 4.4;
+      cube(x0,x1,z,z+7,0,hh,col,col,shade(col,-30));
+      // windows on the side facing the track
+      const wx = side<0 ? x1 : x0;
+      for (let wy=0.8; wy<hh-0.4; wy+=1.1) for (let wz=1; wz<6.5; wz+=1.8)
+        quad(proj(wx,z+wz,wy),proj(wx,z+wz+0.9,wy),proj(wx,z+wz+0.9,wy+0.6),proj(wx,z+wz,wy+0.6),'#2a3550cc');
+    }
+  }
+
+  // objects, far to near
+  const list = g.objs.map(o=>({o, rel:o.pos-g.dist})).sort((a,b)=>b.rel-a.rel);
+  let playerDrawn = false;
+  for (const {o, rel} of list){
+    if (!playerDrawn && rel < 0.3){ drawPlayer(); playerDrawn = true; }
+    drawObj(o, rel);
+  }
+  if (!playerDrawn) drawPlayer();
+
+  // boost speed lines
+  if (g.boost > 0){
+    ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 2;
+    for (let i=0;i<14;i++){
+      const a = Math.random()*Math.PI*2, r1 = 80+Math.random()*80, r2 = r1+60+Math.random()*120;
+      const cx = W/2, cy = HOR + (BASE-HOR)*0.3;
+      ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1); ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2); ctx.stroke();
+    }
+  }
+
+  // floating cash
+  ctx.textAlign = 'center'; ctx.font = 'bold 22px Trebuchet MS, sans-serif';
+  for (const f of g.floats){
+    ctx.globalAlpha = Math.min(1, f.life*2);
+    ctx.fillStyle = '#0008'; ctx.fillText(f.text, f.x+2, f.y+2);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function shade(hex, amt){
+  const n = parseInt(hex.slice(1,7),16);
+  const c = v => Math.max(0, Math.min(255, v+amt));
+  return `rgb(${c(n>>16)},${c((n>>8)&255)},${c(n&255)})`;
+}
+
+function drawObj(o, rel){
+  const l = o.lane;
+  if (o.type === 'train'){
+    const [f,t,s] = TRAIN_COLS[o.hue];
+    cube(l-0.44,l+0.44,rel,rel+o.len,0,1.9,f,t,s);
+    if (rel > -0.5){
+      quad(proj(l-0.34,rel,1.05),proj(l+0.34,rel,1.05),proj(l+0.34,rel,1.65),proj(l-0.34,rel,1.65),'#1d2a44');
+      quad(proj(l-0.44,rel,0.45),proj(l+0.44,rel,0.45),proj(l+0.44,rel,0.6),proj(l-0.44,rel,0.6),'#ffffffaa');
+      for (const sx of [-0.28,0.28]){ const p = proj(l+sx,rel,0.3); ctx.fillStyle='#fff7a0'; ctx.beginPath(); ctx.arc(p[0],p[1],7*p[2],0,7); ctx.fill(); }
+    }
+  } else if (o.type === 'block'){
+    cube(l-0.42,l+0.42,rel,rel+0.4,0,0.8,'#ffcc00','#ffe066','#c99a00');
+    for (let i=0;i<3;i++){
+      const x = l-0.42 + i*0.3 + 0.05;
+      quad(proj(x,rel,0.15),proj(x+0.14,rel,0.15),proj(x+0.2,rel,0.65),proj(x+0.06,rel,0.65),'#222');
+    }
+  } else if (o.type === 'bar'){
+    cube(l-0.44,l-0.36,rel,rel+0.15,0,1.55,'#ddd','#fff','#aaa');
+    cube(l+0.36,l+0.44,rel,rel+0.15,0,1.55,'#ddd','#fff','#aaa');
+    cube(l-0.44,l+0.44,rel,rel+0.15,1.0,1.5,'#ff4d4d','#ff8080','#b33');
+    quad(proj(l-0.2,rel,1.0),proj(l,rel,1.0),proj(l-0.1,rel,1.5),proj(l-0.3,rel,1.5),'#fff');
+    quad(proj(l+0.15,rel,1.0),proj(l+0.35,rel,1.0),proj(l+0.25,rel,1.5),proj(l+0.05,rel,1.5),'#fff');
+  } else if (o.type === 'coin'){
+    const p = proj(l, rel, o.h), r = LW*0.15*p[2];
+    const sp = Math.abs(Math.cos(G.t*5 + o.pos)) * r * 0.85 + r*0.15;
+    ctx.fillStyle = '#ffd700'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = Math.max(1, 3*p[2]);
+    ctx.beginPath(); ctx.ellipse(p[0], p[1], sp, r, 0, 0, 7); ctx.fill(); ctx.stroke();
+    if (sp > r*0.5 && r > 6){ ctx.fillStyle = '#b8860b'; ctx.font = `bold ${Math.floor(r*1.2)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('$', p[0], p[1]+1); ctx.textBaseline='alphabetic'; }
+  } else {
+    const p = proj(l, rel, o.h + Math.sin(G.t*4)*0.1), r = LW*0.22*p[2];
+    ctx.fillStyle = o.type==='magnetP' ? '#ff707066' : '#6cc4ff66';
+    ctx.beginPath(); ctx.arc(p[0],p[1],r*1.3,0,7); ctx.fill();
+    ctx.font = `${Math.floor(r*1.6)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(o.type==='magnetP' ? '🧲' : '🛡️', p[0], p[1]); ctx.textBaseline='alphabetic';
+  }
+}
+
+function drawPlayer(){
+  const g = G;
+  if (g.inv > 0 && Math.floor(g.t*14)%2===0 && g.boost <= 0) return;
+  const sh = proj(g.px, 0, 0);
+  ctx.fillStyle = '#0005'; ctx.beginPath(); ctx.ellipse(sh[0], sh[1], LW*0.22*(1-Math.min(g.y,2)/4), LW*0.06, 0, 0, 7); ctx.fill();
+  const p = proj(g.px, 0, g.y), u = LW;
+  const sliding = g.slide > 0 && g.y < 0.5;
+  const col = skinColor(g.t);
+  const bodyH = sliding ? 0.35 : 0.65, bodyW = sliding ? 0.55 : 0.38;
+  const bx = p[0], by = p[1];
+  // legs
+  if (!sliding){
+    const sw = g.y > 0 ? 0 : Math.sin(g.t*18)*0.12;
+    ctx.fillStyle = '#334';
+    ctx.fillRect(bx - u*0.14 + sw*u, by - u*0.32, u*0.11, u*0.32);
+    ctx.fillRect(bx + u*0.03 - sw*u, by - u*0.32, u*0.11, u*0.32);
+  }
+  const top = by - (sliding ? u*0.05 : u*0.3) - bodyH*u;
+  ctx.fillStyle = col;
+  roundRect(bx - bodyW*u/2, top, bodyW*u, bodyH*u, u*0.08); ctx.fill();
+  // backpack stripe
+  ctx.fillStyle = '#ffffff55'; ctx.fillRect(bx - bodyW*u/2, top + bodyH*u*0.35, bodyW*u, bodyH*u*0.15);
+  // head + cap
+  const hr = u*0.15, hx = sliding ? bx + bodyW*u*0.35 : bx, hy = top - hr*0.85;
+  ctx.fillStyle = '#f2c79b'; ctx.beginPath(); ctx.arc(hx, hy, hr, 0, 7); ctx.fill();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy - hr*0.2, hr*1.02, Math.PI, 0); ctx.fill();
+  if (g.shield){
+    ctx.strokeStyle = '#6cc4ffcc'; ctx.fillStyle = '#6cc4ff33'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(bx, by - u*0.55, u*0.42, u*0.62, 0, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  if (g.boost > 0){
+    ctx.fillStyle = `hsl(${30+Math.random()*30},100%,60%)`;
+    ctx.beginPath(); ctx.moveTo(bx - u*0.12, by - u*0.1); ctx.lineTo(bx + u*0.12, by - u*0.1); ctx.lineTo(bx, by + u*(0.25+Math.random()*0.2)); ctx.fill();
+  }
+}
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+// ---------- Input ----------
+function act(a){
+  if (state !== 'play') return;
+  const g = G;
+  if (a==='L') g.lane = Math.max(-1, g.lane-1);
+  if (a==='R') g.lane = Math.min(1, g.lane+1);
+  if (a==='U' && g.y <= 0.01){ g.vy = 12; g.y = 0.001; g.slide = 0; }
+  if (a==='D'){ if (g.y > 0) g.vy = -22; g.slide = 0.75; }
+}
+addEventListener('keydown', e => {
+  const k = e.key;
+  if (k==='ArrowLeft'||k==='a'||k==='A') act('L');
+  else if (k==='ArrowRight'||k==='d'||k==='D') act('R');
+  else if (k==='ArrowUp'||k==='w'||k==='W'||k===' ') act('U');
+  else if (k==='ArrowDown'||k==='s'||k==='S') act('D');
+  else return;
+  if (state==='play') e.preventDefault();
+});
+let tStart = null;
+addEventListener('touchstart', e => { if (state!=='play') return; const t = e.touches[0]; tStart = {x:t.clientX, y:t.clientY, used:false}; e.preventDefault(); }, {passive:false});
+addEventListener('touchmove', e => {
+  if (state!=='play' || !tStart || tStart.used) return;
+  const t = e.touches[0], dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > 28){
+    tStart.used = true;
+    if (Math.abs(dx) > Math.abs(dy)) act(dx < 0 ? 'L' : 'R'); else act(dy < 0 ? 'U' : 'D');
+  }
+  e.preventDefault();
+}, {passive:false});
+addEventListener('touchend', () => { tStart = null; });
+
+// ---------- Screens ----------
+function show(id){
+  for (const s of ['menu','shop','over']) $(s).classList.toggle('show', s===id);
+  $('hud').classList.toggle('show', id===null);
+  $('hudPower').style.display = id===null ? 'block' : 'none';
+  if (id==='menu') renderMenu();
+  if (id==='shop') renderShop();
+}
+function renderMenu(){
+  $('menuCash').textContent = '$' + fmt(S.cash);
+  $('menuBest').textContent = S.best ? 'Best run: ' + fmt(S.best) + 'm' : '';
+  const it = [];
+  if (S.items.shield) it.push('🛡️ x' + S.items.shield);
+  if (S.items.boost) it.push('🚀 x' + S.items.boost);
+  $('menuItems').textContent = it.length ? 'Ready for next run: ' + it.join('  ') : '';
+}
+function renderShop(){
+  $('shopCash').textContent = '$' + fmt(S.cash);
+  let h = '<div class="sec">⬆️ Upgrades</div>';
+  for (const k in UP){
+    const u = UP[k], lv = S.up[k], max = lv >= u.costs.length;
+    h += `<div class="card"><div class="info"><div class="name">${u.name}<span class="lvl">Lv ${lv+1}</span></div>
+      <div class="desc">${u.desc}: <b>${u.f(u.vals[lv])}</b>${max ? '' : ' → <b>' + u.f(u.vals[lv+1]) + '</b>'}</div></div>
+      ${max ? '<b>MAX</b>' : `<button class="btn small green" data-up="${k}" ${S.cash < u.costs[lv] ? 'disabled' : ''}>$${fmt(u.costs[lv])}</button>`}</div>`;
+  }
+  h += '<div class="sec">🎒 Power-Ups (used on your next run)</div>';
+  for (const k in ITEMS){
+    const it = ITEMS[k];
+    h += `<div class="card"><div class="icon">${it.icon}</div><div class="info"><div class="name">${it.name}<span class="lvl">Own ${S.items[k]}</span></div>
+      <div class="desc">${it.desc}</div></div>
+      <button class="btn small green" data-item="${k}" ${S.cash < it.cost ? 'disabled' : ''}>$${fmt(it.cost)}</button></div>`;
+  }
+  h += '<div class="sec">🎨 Runner Colors</div><div class="skins">';
+  for (const sk of SKINS){
+    const own = S.skins.includes(sk.id);
+    const bg = sk.c === 'rainbow' ? 'linear-gradient(135deg,#f44,#fd0,#4d4,#4af,#a4f)' : sk.c;
+    h += `<div class="skin ${S.skin===sk.id ? 'sel' : ''}" data-skin="${sk.id}" style="background:${bg}">${own ? (S.skin===sk.id ? '✓' : '') : '$'+fmt(sk.cost)}</div>`;
+  }
+  h += '</div>';
+  $('shopList').innerHTML = h;
+}
+$('shopList').addEventListener('click', e => {
+  const b = e.target.closest('[data-up],[data-item],[data-skin]'); if (!b) return;
+  if (b.dataset.up){
+    const k = b.dataset.up, u = UP[k], lv = S.up[k];
+    if (lv < u.costs.length && S.cash >= u.costs[lv]){ S.cash -= u.costs[lv]; S.up[k]++; }
+  } else if (b.dataset.item){
+    const it = ITEMS[b.dataset.item];
+    if (S.cash >= it.cost){ S.cash -= it.cost; S.items[b.dataset.item]++; }
+  } else {
+    const sk = SKINS.find(s => s.id === b.dataset.skin);
+    if (S.skins.includes(sk.id)) S.skin = sk.id;
+    else if (S.cash >= sk.cost){ S.cash -= sk.cost; S.skins.push(sk.id); S.skin = sk.id; }
+  }
+  persist(); renderShop();
+});
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+  const go = b.dataset.go;
+  if (go === 'play') startRun();
+  else { if (state !== 'play'){ state = go; } show(go); }
+}));
+
+// ---------- Loop ----------
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  if (state === 'play') update(dt);
+  else if (state === 'menu' || state === 'shop'){ G.dist += 8*dt; G.t += dt; }
+  draw();
+  requestAnimationFrame(loop);
+}
+show('menu');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
