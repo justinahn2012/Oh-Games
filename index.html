@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oh Games!</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      font-family: "Trebuchet MS", system-ui, sans-serif;
+      background: linear-gradient(135deg, #6a5cff, #ff5ca8);
+      color: #fff;
+      text-align: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+    h1 { font-size: clamp(3rem, 12vw, 6rem); text-shadow: 0 6px 0 rgba(0,0,0,.2); }
+    p { font-size: 1.25rem; opacity: .9; }
+    button {
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 16px 36px;
+      border: none;
+      border-radius: 999px;
+      background: #ffe14d;
+      color: #333;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #c9a800;
+      transition: transform .1s;
+    }
+    button:active { transform: translateY(4px); box-shadow: 0 2px 0 #c9a800; }
+    #score { font-size: 2rem; font-weight: bold; }
+    .pop {
+      position: fixed;
+      font-size: 2rem;
+      pointer-events: none;
+      animation: float 1s ease-out forwards;
+    }
+    @keyframes float {
+      to { transform: translateY(-120px) scale(1.5); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Oh Games! 🎮</h1>
+  <p>Our very first website. More games coming soon!</p>
+  <button id="btn">Tap me!</button>
+  <div id="score">Taps: 0</div>
+
+  <script>
+    const emojis = ["⭐", "🎉", "🚀", "🍕", "🦄", "🌈", "👾", "🔥"];
+    let taps = 0;
+    const btn = document.getElementById("btn");
+    const score = document.getElementById("score");
+
+    btn.addEventListener("click", (e) => {
+      taps++;
+      score.textContent = "Taps: " + taps;
+      const pop = document.createElement("div");
+      pop.className = "pop";
+      pop.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      pop.style.left = (e.clientX - 16) + "px";
+      pop.style.top = (e.clientY - 16) + "px";
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), 1000);
+    });
+  </script>
+</body>
+</html>
