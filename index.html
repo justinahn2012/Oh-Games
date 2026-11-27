@@ -218,6 +218,8 @@ const RIDES=[
  {id:'gold',name:'Vento GT Oro',icon:'✨',desc:'Solid-gold SUPERCAR. The fastest ride in Miami',cost:100000,type:'super',color:'#e8c547',spd:62,hp:16,sup:1,gold:1},
 ];
 const STORE_INFO={
+ hospital:{name:'MIAMI GENERAL',icon:'🏥',wall:'#f4f4f4',awn:'#d61f2c',fg:'#ff4d4d'},
+ jobs:{name:'JOB CENTER',icon:'💼',wall:'#e9e4da',awn:'#3d7bd9',fg:'#5ec8ff'},
  fire:{name:'FIRE STATION 7',icon:'🚒',wall:'#9b3b2e',awn:'#c8161d',fg:'#ff4d4d'},
  ebike:{name:'VOLT E-BIKES',icon:'🛵',wall:'#f2f2f2',awn:'#7ed321',fg:'#7ed321'},
  marina:{name:'MIAMI MARINA',icon:'⚓',wall:'#fff',awn:'#1d6fd9',fg:'#5ef0ff'},
@@ -673,12 +675,88 @@ function buildMountains(){
  const ts=new THREE.Mesh(new THREE.PlaneGeometry(4.2,0.7),new THREE.MeshBasicMaterial({map:signTex('⛰ MOUNTAIN TRAIL','#7dff8a')}));ts.position.set(-12,2.2,151);ts.rotation.y=-Math.PI/2;scene.add(ts);
 }
 
+// ================= JOBS: Police, SWAT, Firefighter, Paramedic (easy interviews, missions, pay, ranks)
+const JOBS={
+ police:{name:'Police Officer',icon:'👮',where:'POLICE station',ranks:['Rookie','Officer','Detective','Sergeant','Chief'],pay:150,
+  look:{body:'man',hs:'buzz',shirt:'#22365e',pants:'#16213e',shoes:'#111111'},opts:{cop:true},
+  qs:[['Someone drops their wallet. What do you do?',['👛 Give it back','💰 Keep it','🍔 Eat it'],0],['A kid is lost at the beach. You…',['🤝 Help find their family','🏄 Go surfing','🚔 Arrest the kid'],0],['What does a red traffic light mean?',['🛑 Stop','🏎️ Go faster','💃 Dance'],0]]},
+ swat:{name:'SWAT Officer',icon:'🛡️',where:'POLICE station',ranks:['Recruit','Operator','Team Lead','Commander','SWAT Chief'],pay:300,
+  look:{body:'man',hs:'buzz',shirt:'#1e232b',pants:'#1e232b',shoes:'#111111'},opts:{swat:true},
+  qs:[['Your team needs help. You…',['🤝 Work together','😴 Take a nap','🍕 Order pizza'],0],['Before a mission you check your…',['🎒 Gear','🔮 Horoscope','🍬 Candy stash'],0],['A runaway car is heading to the beach. You…',['🚧 Set up a roadblock','📸 Take photos','🏖️ Join them'],0]],fitness:true},
+ fire:{name:'Firefighter',icon:'🧑‍🚒',where:'FIRE STATION 7',ranks:['Probie','Firefighter','Engineer','Captain','Fire Chief'],pay:150,
+  look:{body:'man',hs:'short',shirt:'#c9a227',pants:'#2b2b2b',shoes:'#111111'},opts:{fire:true},
+  qs:[['A cat is stuck on a roof. You…',['🪜 Rescue it with the ladder','🐱 Meow at it','😴 Take a nap'],0],['What puts out a car fire?',['💧 Water','⛽ Gasoline','🍡 Marshmallows'],0],['The smoke alarm is beeping. That means…',['🏃 Get everyone out','🎵 Turn the music up','🍞 Make toast'],0]]},
+ medic:{name:'Paramedic',icon:'🧑‍⚕️',where:'MIAMI GENERAL hospital',ranks:['Trainee','EMT','Paramedic','Lead Medic','Chief Medic'],pay:150,
+  look:{body:'man',hs:'short',shirt:'#e8eef5',pants:'#1d3557',shoes:'#f4f4f4'},opts:{medic:true},
+  qs:[['Someone fainted in the heat. First you…',['🩺 Check on them and help','🤳 Take a selfie','🚶 Walk away'],0],['Best drink on a hot Miami day?',['💧 Water','☕ Ten cafecitos','🌊 Ocean water'],0],['An ambulance siren means…',['🚑 Hurry, someone needs help','🍦 Ice cream truck','🎉 Party time'],0]]},
+};
+if(!S.jobXp)S.jobXp={};
+const onDuty=()=>S.job&&S.job!=='citizen'&&S.duty;
+const rankOf=j=>{const xp=S.jobXp[j]||0;return xp>=25?4:xp>=15?3:xp>=8?2:xp>=3?1:0;};
+let iv=null,mission=null,missionT=6,perps=[];
+function jobLook(){if(!onDuty())return S.look;const J=JOBS[S.job];return Object.assign({},S.look,J.look,{skin:S.look.skin||'#c68642',hair:S.look.hair||'#0d0d0d',body:'man'});}
+function careerCards(jobs){let h='';
+ if(iv){const J=JOBS[iv.job];
+  if(iv.q<J.qs.length){const [q,ans]=J.qs[iv.q];h+=`<div class="sec">${J.icon} ${J.name} interview · question ${iv.q+1} of ${J.qs.length}</div><div class="card"><div class="inf"><div class="nm">${q}</div>${iv.hint?`<div class="ds">🙂 ${iv.hint}</div>`:''}</div></div>`;
+   ans.forEach((a,i)=>h+=`<button class="btn" style="margin:2px 0" data-act="ans:${i}">${a}</button>`);return h;}
+  if(J.fitness&&!iv.fit){h+=`<div class="sec">🏃 SWAT fitness test</div><div class="card"><div class="inf"><div class="nm">Tap SPRINT ${10-(iv.taps||0)} more times!</div><div class="ds">Easy: no time limit 😉</div></div></div><button class="btn pink" style="font-size:1.6rem;padding:20px" data-act="sprint">🏃 SPRINT!</button>`;return h;}
+  return h;}
+ for(const j of jobs){const J=JOBS[j];const mine=S.job===j;h+=card(J.icon,J.name+(mine?` · ${J.ranks[rankOf(j)]}`:''),mine?`${S.duty?'🟢 On duty':'⚪ Off duty'} · missions done: ${S.jobXp[j]||0} · pay $${Math.round(J.pay*(1+0.25*rankOf(j)))} per mission`:`Easy interview, then you're hired! Pay $${J.pay}+ per mission.`,
+  mine?`<button class="btn sm ${S.duty?'':'pink'}" data-act="duty">${S.duty?'Go off duty':'Go on duty'}</button>`:`<button class="btn sm pink" data-act="apply:${j}">Apply</button>`);}
+ if(S.job&&S.job!=='citizen'){h+=card('🧍','Quit and be a citizen','Free roam, mischief and Golden Stars',`<button class="btn sm" data-act="quit">Quit job</button>`);}
+ if(onDuty()){const v=S.job==='fire'?'fire truck':S.job==='medic'?'ambulance':S.job==='swat'?'SWAT van':'patrol car';h+=card('🚘','Get your '+v,'Parked right outside',`<button class="btn sm" data-act="jobcar">Get it</button>`);}
+ return h;}
+function hired(j){S.job=j;S.duty=true;S.jobXp[j]=S.jobXp[j]||0;iv=null;heat=0;clearCops();save();rebuildPlayer();sub(`🎉 You're hired! Welcome to the team, ${JOBS[j].ranks[rankOf(j)]}!`);mission=null;missionT=3;}
+function makeAmbulance(x,z,h){const c=makeCar(x,z,h,'parked',{type:'van',color:'#f4f4f4',hp:16,spd:30});c.name='Ambulance';c.amb=true;
+ for(const s of [-1,1])addM(c.body,new THREE.BoxGeometry(0.02,0.35,4.8),mat('#d61f2c'),s*1.01,1.05,0,false);
+ const crossT=(()=>{const [cv,x]=cvs(128,128);x.fillStyle='#fff';x.fillRect(0,0,128,128);x.fillStyle='#d61f2c';x.fillRect(48,16,32,96);x.fillRect(16,48,96,32);return toTex(cv,false);})();
+ for(const s of [-1,1]){const p=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.8),new THREE.MeshBasicMaterial({map:crossT}));p.position.set(s*1.02,1.5,0.6);p.rotation.y=s*Math.PI/2;c.body.add(p);}
+ c.red=new THREE.MeshBasicMaterial({color:'#ff2020'});c.blue=new THREE.MeshBasicMaterial({color:'#ffffff'});addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.red,-0.4,2.62,1.6,false);addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.blue,0.4,2.62,1.6,false);return c;}
+function spawnJobCar(s){const x=s.x+Math.sin(0)*0,z=s.z;let c;
+ if(S.job==='fire')c=makeFireTruck(x+3,z+3,0,'parked');else if(S.job==='medic')c=makeAmbulance(x+3,z+3,0);
+ else{c=makeCar(x+3,z+3,0,'police',S.job==='swat'?{type:'van',color:'#1e232b',hp:14}:{});c.mode='parked';c.jobCar=true;if(S.job==='swat')c.name='SWAT Van';}
+ c.owned=true;for(let t=0;t<15;t++)carVsWorld(c);sub('🚘 Your vehicle is outside!');P.wp={x:c.x,z:c.z,name:c.name};}
+// ---- missions
+function randRoadSpot(minD,maxD){for(let t=0;t<60;t++){const i=Math.floor(Math.random()*(NB+1)),along=MR(8,CITY-8);const xr=Math.random()<0.5;const x=xr?i*CELL+MR(-3,3):along,z=xr?along:i*CELL+MR(-3,3);const d=Math.hypot(x-P.x,z-P.z);if(d>minD&&d<maxD)return{x,z};}return{x:P.x+40,z:P.z};}
+function sideSpot(minD,maxD){for(let t=0;t<60;t++){const i=Math.floor(Math.random()*NB),j=Math.floor(Math.random()*NB),k=Math.floor(Math.random()*4);const c=blockCorner(i,j,k);const d=Math.hypot(c[0]-P.x,c[1]-P.z);if(d>minD&&d<maxD)return{x:c[0],z:c[1]};}return{x:P.x+30,z:P.z};}
+function spawnPerp(x,z){const h=makeHuman({body:'man',hs:'short',skin:pick(SKINS),hair:'#1a1a1a',shirt:'#c0392b',pants:'#1a1a1a',shoes:'#f4f4f4'},{head:'beanie',eyes:'shades'});h.g.position.set(x,0.2,z);scene.add(h.g);
+ const p={h,x,z,y:0.2,vy:0,onGround:false,support:null,landVel:0,caught:false,t:0};perps.push(p);return p;}
+function newMission(){const J=S.job;let m=null;
+ if(J==='police'){const s=sideSpot(40,110);m={type:'perp',title:'Catch the troublemaker in the red hoodie',perps:[spawnPerp(s.x,s.z)]};}
+ else if(J==='swat'){const s=sideSpot(50,120);m={type:'perp',title:'Round up 3 escaped troublemakers',perps:[0,1,2].map(i=>spawnPerp(s.x+i*2,s.z+i))};}
+ else if(J==='fire'){if(Math.random()<0.6){const s=randRoadSpot(50,140);const c=makeCar(s.x,s.z,Math.random()*6,'parked');c.mode='wrecked';c.health=0;c.body.scale.y=0.62;c.bodyMat.color.set('#3a3a3a');c.wreckT=5;c.claimed=true;m={type:'fire',title:'🔥 Car fire! Put it out with the water cannon',car:c};}
+  else{const sp=pick(starSpots.filter(s=>s.y<30&&s.y>4));const cat=new THREE.Group();const cm=mat(pick(['#e08a3a','#2a2a2a','#d9d9d9']),{roughness:0.9});const bd=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,8),cm);bd.scale.set(1,0.8,1.5);bd.position.y=0.2;cat.add(bd);const hd=new THREE.Mesh(new THREE.SphereGeometry(0.15,12,8),cm);hd.position.set(0,0.38,0.3);cat.add(hd);for(const s of [-1,1]){const e=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.1,4),cm);e.position.set(s*0.08,0.52,0.3);cat.add(e);}const tl=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,5),cm);tl.position.set(0,0.4,-0.35);tl.rotation.x=0.6;cat.add(tl);cat.position.set(sp.x+1,sp.y-1.4,sp.z);scene.add(cat);
+   m={type:'cat',title:'🐱 A cat is stuck on a roof! Climb up and rescue it',cat,x:sp.x+1,y:sp.y-1.4,z:sp.z};}}
+ else if(J==='medic'){const s=sideSpot(40,130);const h=makeHuman(randLook(),randEq());h.g.position.set(s.x,0.16,s.z);h.g.rotation.set(-Math.PI/2,Math.random()*6,0,'YXZ');animHuman(h,0,false,0.02);scene.add(h.g);m={type:'patient',title:'🚑 Someone fainted! Get there and help them',h,x:s.x,z:s.z};}
+ if(!m)return;mission=m;const tx=m.perps?m.perps[0].x:m.car?m.car.x:m.x,tz=m.perps?m.perps[0].z:m.car?m.car.z:m.z;P.wp={x:tx,z:tz,name:'Mission'};sub('📻 Dispatch: '+m.title);if(window.radioMsg)radioMsg('Dispatch',m.title);}
+function finishMission(){const J=JOBS[S.job];const pay=Math.round(J.pay*(1+0.25*rankOf(S.job))*(mission.perps?mission.perps.length:1));const r0=rankOf(S.job);S.jobXp[S.job]=(S.jobXp[S.job]||0)+1;addCash(pay);sub(`✅ Mission complete! +$${pay}`);
+ if(rankOf(S.job)>r0)sub(`⭐ PROMOTED to ${J.ranks[rankOf(S.job)]}!`);mission=null;missionT=8;P.wp=null;save();if(window.radioMsg)radioMsg('Dispatch','Great work out there. Stand by for the next call.');}
+function updJobs(dt){
+ if(!onDuty()){if(mission){if(mission.perps)for(const p of mission.perps)scene.remove(p.h.g);if(mission.h)scene.remove(mission.h.g);if(mission.cat)scene.remove(mission.cat);mission=null;perps=[];}return;}
+ if(S.job==='police'||S.job==='swat'){heat=0;}
+ if(!mission){missionT-=dt;if(missionT<=0)newMission();return;}
+ const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;
+ if(mission.type==='perp'){let left=0;for(const p of mission.perps){if(p.caught){p.t+=dt;continue;}left++;const dx=p.x-px,dz=p.z-pz,d=Math.hypot(dx,dz)||1;const run=d<25;const spd=run?(d<4?5.5:6.8):1.3;const mx=run?dx/d:Math.sin(p.t*0.3),mz=run?dz/d:Math.cos(p.t*0.3);p.t+=dt;p.vy-=26*dt;
+   stepBody(p,mx*spd*dt,p.vy*dt,mz*spd*dt,0.35,1.8,0.5);p.x=clamp(p.x,-30,CITY+40);p.z=clamp(p.z,-30,CITY+30);p.h.g.position.set(p.x,p.y,p.z);p.h.g.rotation.y=Math.atan2(mx,mz);animHuman(p.h,spd,!p.onGround,dt);
+   if(!P.car&&d<1.4&&Math.abs(P.y-p.y)<1.2){p.caught=true;p.h.g.rotation.x=0;animHuman(p.h,0,false,dt);say(p.x,p.y+2.3,p.z,pick(['Okay okay, you got me!','Aww man!','No fair!']));burst(p.x,p.y+1,p.z,'#e8c547',10,3,0.5);}
+   if(Math.random()<dt*0.3&&run)say(p.x,p.y+2.3,p.z,pick(['Catch me if you can!','Too slow!','Nope!']));}
+  const first=mission.perps.find(p=>!p.caught);if(first)P.wp={x:first.x,z:first.z,name:'Troublemaker'};
+  if(!left){for(const p of mission.perps)setTimeout(()=>scene.remove(p.h.g),3000);finishMission();}}
+ else if(mission.type==='fire'){if(mission.car.out){finishMission();}}
+ else if(mission.type==='cat'){mission.cat.rotation.y+=dt;if(Math.random()<dt*0.4)say(mission.x,mission.y+1,mission.z,'Meow!');if(!P.car&&Math.hypot(P.x-mission.x,P.z-mission.z)<1.8&&Math.abs(P.y-mission.y)<2){scene.remove(mission.cat);sub('🐱 Cat rescued! Purrrr');finishMission();}}
+ else if(mission.type==='patient'){if(!P.car&&Math.hypot(P.x-mission.x,P.z-mission.z)<2){const h=mission.h;h.g.rotation.x=0;say(mission.x,2.3,mission.z,pick(['Thank you so much!','I feel better!','You saved me!']));burst(mission.x,1,mission.z,'#7dff8a',12,3,0.6);setTimeout(()=>scene.remove(h.g),4000);finishMission();}}}
+function buildHospital(L){const w=14,d=12,h=11,v=-1;const b=lbox(L,0,v,0.15,w,h,d,M.office[3],true,true,4);lbox(L,0,v,h+0.15,w+0.4,0.4,d+0.4,M.white);const front=v+d/2;
+ const crossT=(()=>{const [cv,x]=cvs(128,128);x.fillStyle='#fff';x.fillRect(0,0,128,128);x.fillStyle='#d61f2c';x.fillRect(46,12,36,104);x.fillRect(12,46,104,36);return toTex(cv,false);})();
+ const sp=lpt(L,w/2-2.2,front+0.1);const cr=new THREE.Mesh(new THREE.PlaneGeometry(2.4,2.4),new THREE.MeshBasicMaterial({map:crossT}));cr.position.set(sp.x,h-2,sp.z);cr.rotation.y=Math.atan2(L.nx,L.nz);scene.add(cr);
+ storefront(L,front,w,'hospital');addLadder(L,w/2-1.6,v-d/2,0.15,h+0.55);starSpots.push({x:b.x,y:h+0.55+1.4,z:b.z});
+ const p=lpt(L,0,0);addStatic(new THREE.CylinderGeometry(3,3,0.1,24),M.dark,p.x,h+0.6,p.z);addStatic(new THREE.RingGeometry(1.2,1.5,24).rotateX(-Math.PI/2),mat('#d61f2c'),p.x,h+0.66,p.z);}
+
 function buildCity(){
  buildGround();streetFurniture();
  const byD={ocean:[],havana:[],wynwood:[],brickell:[],downtown:[]};
  for(let i=0;i<NB;i++)for(let j=0;j<NB;j++)for(let a=0;a<2;a++)for(let b=0;b<2;b++)byD[distId(i,j)].push({i,j,a,b});
  for(const k in byD){const l=byD[k];for(let i=l.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[l[i],l[j]]=[l[j],l[i]];}}
- const special={downtown:['police','fire','realty','blaster','bank','mart','gadget'],brickell:['cars','realty','blaster','style','cafe'],wynwood:['ebike','blaster','gadget','style','cafe','mart'],havana:['spray','blaster','mart','cafe','style','gadget'],ocean:['blaster','ebike','cafe','mart','style']};
+ const special={downtown:['police','fire','jobs','realty','blaster','bank','mart','gadget'],brickell:['hospital','cars','realty','blaster','style','cafe'],wynwood:['ebike','blaster','gadget','style','cafe','mart'],havana:['spray','blaster','mart','cafe','style','gadget'],ocean:['blaster','ebike','cafe','mart','style']};
  let hn=0;
  for(const dist in byD)byD[dist].forEach(lt=>{
   const x0=lt.i*CELL+ROAD/2,z0=lt.j*CELL+ROAD/2,cx=x0+9+lt.a*18,cz=z0+9+lt.b*18;
@@ -688,7 +766,7 @@ function buildCity(){
   const L={cx,cz,nx,nz,tx:-nz,tz:nx};
   if(oceanFront){buildHotel(L,HOTEL_NAMES[hn++%HOTEL_NAMES.length]);return;}
   const sp=special[dist];
-  if(sp.length){const t=sp.shift();if(t==='spray')buildSpray(L);else if(t==='fire')buildFireStation(L);else if(dist==='wynwood')buildWarehouse(L,t);else buildShop(L,t,dist);return;}
+  if(sp.length){const t=sp.shift();if(t==='spray')buildSpray(L);else if(t==='fire')buildFireStation(L);else if(t==='hospital')buildHospital(L);else if(dist==='wynwood')buildWarehouse(L,t);else buildShop(L,t,dist);return;}
   const r=rnd();
   if(dist==='downtown'){if(r<0.5)buildGlassTower(L,45,95);else if(r<0.8)buildCondo(L,30,60);else buildShop(L,null,dist);}
   else if(dist==='brickell'){if(r<0.45)buildCondo(L,36,72);else if(r<0.7)buildGlassTower(L,30,65);else if(r<0.82)buildHotel(L,HOTEL_NAMES[hn++%HOTEL_NAMES.length]);else if(r<0.92)buildPark(L,dist);else buildShop(L,null,dist);}
@@ -766,6 +844,8 @@ function makeHuman(look,eq={},opts={}){
  let hatY=top.y-hh*0.18;
  let capC=new THREE.Vector3(hc.x,hatY-0.035,hc.z),capR=R*1.08,eyeP=new THREE.Vector3(hc.x,head.y+hh*0.47,hc.z+R*0.98);
  if(kind==='man'&&T.skull){const sk=T.skull,k=T.scale;capC=new THREE.Vector3(sk.x*k,sk.y*k+sk.r*k*0.28,sk.z*k-0.004);capR=sk.r*k*1.1;hatY=capC.y+capR*0.55;eyeP=new THREE.Vector3(sk.x*k,(sk.y-0.011)*k,(sk.z+0.112)*k);}
+ if(opts.fire){const hm=mat('#c8161d',{roughness:0.35});const hl=mesh(new THREE.SphereGeometry(capR*1.2,24,12,0,Math.PI*2,0,Math.PI*0.5),hm);const br=mesh(new THREE.CylinderGeometry(capR*1.6,capR*1.7,0.02,24),hm,0,-0.005,-0.02);attach(h,'Head',grp(hl,br,mesh(new THREE.BoxGeometry(0.06,0.06,0.01),mat('#e8c547',{metalness:0.8}),0,capR*0.7,capR*1.1)),new THREE.Vector3(capC.x,capC.y-0.02,capC.z));}
+ if(opts.medic){attach(h,'Neck',new THREE.Mesh(new THREE.TorusGeometry(0.08,0.006,6,20,Math.PI*1.4),mat('#333333')),new THREE.Vector3(eyeP.x,eyeP.y-0.17,eyeP.z-0.02));}
  if(A.head==='cap'||opts.cop){const c=opts.cop?'#13213f':'#c73a46';attach(h,'Head',grp((()=>{const d=mesh(new THREE.SphereGeometry(capR,24,12,0,Math.PI*2,0,Math.PI*0.5),M2(c));d.scale.set(1,0.82,1.06);return d;})(),mesh(new THREE.CylinderGeometry(capR*1.0,capR*1.0,0.025,24),M2(c),0,0.012,0),mesh(new THREE.BoxGeometry(capR*1.55,0.012,capR*1.15),M2(opts.cop?'#111111':c),0,0.004,capR*1.0)),capC);
   if(opts.cop)attach(h,'Head',mesh(new THREE.BoxGeometry(0.035,0.04,0.01),mat('#e8c547',{metalness:0.9,roughness:0.2})),new THREE.Vector3(capC.x,capC.y+capR*0.62,capC.z+capR*0.84));}
  if(A.head==='sunhat')attach(h,'Head',grp(mesh(new THREE.CylinderGeometry(R*0.95,R*1.05,0.1,24),M2('#d9c48c')),mesh(new THREE.CylinderGeometry(R*2.6,R*2.6,0.012,32),M2('#d9c48c'),0,-0.045,0),mesh(new THREE.CylinderGeometry(R*1.06,R*1.06,0.025,24),M2('#3a2a1a'),0,-0.025,0)),new THREE.Vector3(hc.x,hatY+0.02,hc.z));
@@ -808,7 +888,7 @@ function cloth(c){return mat(c,{roughness:0.85});}
 const P={x:CITY-20,y:0.2,z:CITY/2,vx:0,vy:0,vz:0,yaw:Math.PI/2,onGround:true,jumps:0,airMax:0,car:null,stun:0,fuel:4,heldT:0,speedT:0,bounceT:0,gumT:0,phase:0,support:null,landVel:0};
 if(S.home){P.x=S.home.x;P.z=S.home.z;}
 let model=null;
-function rebuildPlayer(){if(model)scene.remove(model.g);model=makeHuman(S.look,S.eq,{jetpack:!!S.ups.jetpack});scene.add(model.g);model.g.visible=!P.car;}
+function rebuildPlayer(){if(model)scene.remove(model.g);const od=typeof onDuty==='function'&&onDuty();model=makeHuman(od?jobLook():S.look,od?{}:S.eq,Object.assign({jetpack:!!S.ups.jetpack&&!od},od?JOBS[S.job].opts:{}));scene.add(model.g);model.g.visible=!P.car;}
 rebuildPlayer();
 const COP_LOOK={body:'man',hs:'buzz',skin:'#e0ac69',hair:'#2a1a10',shirt:'#22365e',pants:'#16213e',shoes:'#111111'};
 
@@ -1014,7 +1094,7 @@ function updPed(p,dt){
 const officers=[];let heat=0,calmT=0,spawnT=0;
 const stars=()=>Math.min(5,Math.floor(heat));
 const maxOfficers=()=>Math.min(stars()>=4?12:8,stars()*2);
-function addHeat(v){if(P.gumT>0)return;const b=stars();heat=Math.min(5.99,heat+v);calmT=0;if(stars()>b)sub('🚨 Wanted level '+'★'.repeat(stars()));}
+function addHeat(v){if(P.gumT>0||onDuty())return;const b=stars();heat=Math.min(5.99,heat+v);calmT=0;if(stars()>b)sub('🚨 Wanted level '+'★'.repeat(stars()));}
 const COP_SKINS=['#ffdbac','#e0ac69','#c68642','#8d5524','#5c3a21'];
 function spawnOfficer(x,z){const look=Object.assign({},COP_LOOK,{skin:pick(COP_SKINS)});const h=makeHuman(look,{eyes:Math.random()<0.5?'shades':undefined},{cop:true});h.g.position.set(x,0,z);scene.add(h.g);
  officers.push({h,x,z,y:0.2,vy:0,onGround:false,stun:0,kind:'',fx:null,phase:Math.random()*6,support:null,landVel:0});}
@@ -1406,11 +1486,11 @@ function updPrompt(){let t='';const K=isTouch?'Tap 🚪':'Press <b>E</b>';
 // ---------------------------------------------------------------- stores
 let curStore=null,storeTab=0;
 function openStore(s){if(s.type==='blaster'){S.blasterSeen=1;save();}curStore=s;storeTab=0;state='store';showScreen('store');renderStore();}
-$('storeClose').onclick=()=>{state='play';showScreen(null);rebuildPlayer();updWeapon();};
+$('storeClose').onclick=()=>{iv=null;state='play';showScreen(null);rebuildPlayer();updWeapon();};
 function card(icon,name,desc,btnHtml,tag=''){return `<div class="card"><div class="ic">${icon}</div><div class="inf"><div class="nm">${name}${tag?`<span class="tag">${tag}</span>`:''}</div><div class="ds">${desc}</div></div>${btnHtml}</div>`;}
 const buyBtn=(cost,act,label)=>`<button class="btn sm" data-act="${act}" ${S.cash<cost?'disabled':''}>${label||'$'+fmt(cost)}</button>`;
 function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${s.name}`;$('storeCash').textContent='$'+fmt(S.cash);
- const tabs={fire:['Station'],ebike:['E-Bikes'],marina:['Boats'],realty:['Homes for Sale'],home:['My Home'],blaster:['Weapons','Throwables','Upgrades'],gadget:['Gear'],style:['Customize','Characters','Accessories'],mart:['Snacks','Mischief'],cafe:['Menu','Mischief'],cars:['Cars'],bank:['Bank'],police:['Front Desk'],hotel:['Front Desk','Gift Shop'],spray:['Garage']}[s.type];
+ const tabs={jobs:['Careers'],hospital:['Careers'],fire:['Station','Careers'],ebike:['E-Bikes'],marina:['Boats'],realty:['Homes for Sale'],home:['My Home'],blaster:['Weapons','Throwables','Upgrades'],gadget:['Gear'],style:['Customize','Characters','Accessories'],mart:['Snacks','Mischief'],cafe:['Menu','Mischief'],cars:['Cars'],bank:['Bank'],police:['Front Desk','Careers'],hotel:['Front Desk','Gift Shop'],spray:['Garage']}[s.type];
  $('storeTabs').innerHTML=tabs.length>1?tabs.map((t,i)=>`<button class="btn sm ${i===storeTab?'sel':''}" data-tab="${i}">${t}</button>`).join(''):'';
  const tab=tabs[storeTab];let h='';
  if(tab==='Weapons')for(const w of W.filter(w=>!w.thrown)){const own=S.gad[w.id]>0;h+=card(w.icon,w.name,w.desc+(w.inf?' · buy once, unlimited':` · ${wPack(w)} shots per pack`),w.inf&&own?'<b>✓ OWNED</b>':buyBtn(own?Math.round(w.cost*0.4):w.cost,'wbuy:'+w.id,own?'Ammo $'+fmt(Math.round(w.cost*0.4)):null),own?(w.inf?'owned':'ammo '+S.gad[w.id]):'');}
@@ -1423,6 +1503,7 @@ function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${
    h+=card('😴','Rest','Lie low inside. Clears your wanted level.',`<button class="btn sm" data-act="rest">Rest</button>`);
    if(H.roof)h+=card('🛗',H.mansion?'Go up to the roof terrace':'Elevator to the roof','',`<button class="btn sm" data-act="hroof:${H.id}">Go</button>`);
    h+='<div class="sec">🚗 Garage</div>';const rs=RIDES.filter(r=>S.rides.includes(r.id));if(!rs.length)h+='<div class="ds">No cars yet. Buy one at MIAMI MOTORS.</div>';for(const r of rs)h+=card(r.icon,r.name,'Bring it out to your driveway',`<button class="btn sm" data-act="ride:${r.id}">Bring out</button>`);for(const b of BIKES.filter(b=>(S.bikes||[]).includes(b.id)))h+=card(b.icon,b.name,'Bring it out',`<button class="btn sm" data-act="bike:${b.id}">Bring out</button>`);}}
+ if(tab==='Careers'){h+=careerCards({police:['police','swat'],fire:['fire'],hospital:['medic'],jobs:['police','swat','fire','medic']}[s.type]);}
  if(tab==='Station'){h+=card('🚒','Take a fire truck','Drive it with lights and siren. F = water cannon (put out burning cars for $50). Get out to raise the aerial ladder and reach rooftops.',`<button class="btn sm" data-act="firetruck">Take one</button>`);h+=card('🔥','Fires','Wrecked cars catch fire. Fire trucks race to put them out.','');}
  if(tab==='E-Bikes'){h+='<div class="ds">Or rent a lime-green ZIP bike from the racks around town ($5 + $2 per 30s).</div>';for(const b of BIKES){const own=(S.bikes||[]).includes(b.id);h+=card(b.icon,b.name,b.desc+` · top speed ${b.spd}`,own?`<button class="btn sm" data-act="bike:${b.id}">Bring out</button>`:buyBtn(b.cost,'bike:'+b.id),own?'owned':'');}}
  if(tab==='Boats'){h+='<div class="ds">Your boats are delivered to the end of the dock. Drive back to land or a dock to get out.</div>';for(const b of BOATS){const own=(S.boats||[]).includes(b.id);h+=card(b.icon,b.name,b.desc+` · top speed ${b.spd}`,own?`<button class="btn sm" data-act="boat:${b.id}">Deliver</button>`:buyBtn(b.cost,'boat:'+b.id),own?'owned':'');}}
@@ -1462,6 +1543,12 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='rest'){heat=0;clearCops();sub('😴 You rested. The cops gave up looking for you.');}
  if(a==='hroof'){const H=HOMES.find(x=>x.id===id);P.x=H.roof.x;P.z=H.roof.z;P.y=H.roof.y;P.vy=0;P.airMax=P.y;state='play';showScreen(null);rebuildPlayer();updWeapon();sub('🌇 What a view!');save();return;}
  if(a==='firetruck'){const sp=fireSpots[0];let c=cars.find(k=>k.fire&&k.mode==='parked'&&Math.hypot(k.x-sp.x,k.z-sp.z)<12);if(!c)c=makeFireTruck(sp.x,sp.z,sp.h,'parked');state='play';showScreen(null);rebuildPlayer();updWeapon();enterCar(c);save();return;}
+ if(a==='apply'){iv={job:id,q:0};}
+ if(a==='ans'){const J=JOBS[iv.job];if(+id===J.qs[iv.q][2]){iv.q++;iv.hint=null;if(iv.q>=J.qs.length&&!J.fitness){hired(iv.job);}else if(iv.q>=J.qs.length)sub('👍 Great answers! Now the fitness test');}else iv.hint='Not quite! Think about what a hero would do. Try again!';}
+ if(a==='sprint'){iv.taps=(iv.taps||0)+1;if(iv.taps>=10){iv.fit=true;hired(iv.job);}}
+ if(a==='duty'){S.duty=!S.duty;if(S.duty){heat=0;clearCops();missionT=3;}sub(S.duty?'🟢 On duty! Wait for a call from dispatch.':'⚪ Off duty. Enjoy Miami!');rebuildPlayer();}
+ if(a==='quit'){S.job='citizen';S.duty=false;sub('🧍 You quit. Back to being a citizen.');rebuildPlayer();}
+ if(a==='jobcar'){spawnJobCar(s);}
  if(a==='bike'){const b=BKI[id];S.bikes=S.bikes||[];if(S.bikes.includes(id)||pay(b.cost)){if(!S.bikes.includes(id))S.bikes.push(id);const old=cars.find(c=>c.bikeOwned===id);if(old&&old!==P.car){scene.remove(old.g);cars.splice(cars.indexOf(old),1);}const gp=s.garage||s;const c=makeBike(gp.x+1,gp.z+1,Math.random()*6,'parked',id,{owned:true});c.bikeOwned=id;sub(b.icon+' Your '+b.name+' is parked outside!');}}
  if(a==='boat'){const b=BI[id];S.boats=S.boats||[];if(S.boats.includes(id)||pay(b.cost)){if(!S.boats.includes(id))S.boats.push(id);const old=cars.find(c=>c.boatOwned===id);if(old&&old!==P.car){scene.remove(old.g);cars.splice(cars.indexOf(old),1);}const c=makeBoat(s.slip.x,s.slip.z,Math.PI/2,'parked',id,{owned:true});c.boatOwned=id;sub(b.icon+' Your '+b.name+' is waiting at the end of the dock!');P.wp={x:s.slip.x,z:s.slip.z-4,name:b.name};}}
  if(a==='wbuy'){const w=WI[id];const own=S.gad[id]>0;const c=own&&!w.thrown?Math.round(w.cost*0.4):w.cost;if(pay(c)){S.gad[id]=w.inf?1:(S.gad[id]||0)+wPack(w);sub(`${w.icon} ${w.name}${w.inf?' unlocked!':' +'+wPack(w)}`);if(!own){const l=ownedWeapons();curG=l.indexOf(id);}}}
@@ -1494,7 +1581,7 @@ function updHud(dt){const st=stars();const fl=seen&&Math.sin(clock*8)>0;const k=
  if(k!==hudKey){hudKey=k;$('money').textContent='$'+fmt(S.cash);let w='';for(let i=0;i<5;i++)w+=`<span class="${i<st?'on':'off'}">★</span>`;if(P.gumT>0)w='🫧 '+w;$('wanted').innerHTML=w;$('wanted').classList.toggle('flash',fl);}
  let help='';if(promptText)help=promptText+'<br>';
  const hot=nearestStar<25?'🔥 Hot!':nearestStar<70?'Warm':'Cold';
- if(P.car&&P.car.rental&&!P.car.owned)help+=`🛴 ZIP ride: $${rentCost} so far<br>`;if(P.wp){const d=Math.hypot(P.wp.x-(P.car?P.car.x:P.x),P.wp.z-(P.car?P.car.z:P.z));if(d<6)P.wp=null;else help+=`📍 <b>${P.wp.name}</b> · ${Math.round(d)}m<br>`;}if(!S.blasterSeen)help+='🎯 Buy weapons at the <b>BLASTER SHOP</b> (🎯 on the radar)<br>';help+=nearestStar<1e8?`🌟 Find the hidden <b>Golden Stars</b> ${setFound}/5 · ${Math.round(nearestStar)}m · ${hot}`:'🌟 New Golden Stars coming...';
+ if(onDuty()){const J=JOBS[S.job];help+=`${J.icon} <b>${J.name}</b> · ${J.ranks[rankOf(S.job)]} · ${mission?'📋 '+mission.title:'📻 waiting for a call…'}<br>`;}if(P.car&&P.car.rental&&!P.car.owned)help+=`🛴 ZIP ride: $${rentCost} so far<br>`;if(P.wp){const d=Math.hypot(P.wp.x-(P.car?P.car.x:P.x),P.wp.z-(P.car?P.car.z:P.z));if(d<6)P.wp=null;else help+=`📍 <b>${P.wp.name}</b> · ${Math.round(d)}m<br>`;}if(!S.blasterSeen)help+='🎯 Buy weapons at the <b>BLASTER SHOP</b> (🎯 on the radar)<br>';help+=nearestStar<1e8?`🌟 Find the hidden <b>Golden Stars</b> ${setFound}/5 · ${Math.round(nearestStar)}m · ${hot}`:'🌟 New Golden Stars coming...';
  if(state!=='play')help='';$('help').innerHTML=help;$('help').style.display=help?'block':'none';
  const bar=$('bar');if(P.car){bar.style.display='block';bar.firstChild.style.width=Math.max(0,P.car.health/P.car.maxHealth*100)+'%';bar.firstChild.style.background='#4fc36a';}
  else if(S.ups.jetpack){bar.style.display='block';bar.firstChild.style.width=(P.fuel/4*100)+'%';bar.firstChild.style.background='#5ec8ff';}else bar.style.display='none';
@@ -1668,7 +1755,7 @@ function update(dt){
  const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;
  for(const c of cars){const ox=c.x,oz=c.z;c.ox=ox;c.oz=oz;
   if(c.mode==='traffic')updTraffic(c,dt);else if(c.mode==='police'&&state!=='title')updPolice(c,dt);else if(c.mode==='wrecked'){c.wreckT+=dt;if(!c.out&&Math.random()<dt*7)burst(c.x+MR(-0.8,0.8),1.0,c.z+MR(-0.8,0.8),Math.random()<0.55?'#ff7a1a':'#555555',1,1,1.2,-2.5);}
-  if(c.fire){updFireTruck(c,dt);if(c.restT>0)c.restT-=dt;}
+  if(c.fire){updFireTruck(c,dt);if(c.restT>0)c.restT-=dt;}else if(c===P.car&&c.red&&c.blue&&!c.boat){const on=Math.sin(clock*12)>0;c.red.color.set(on?'#ff2020':'#300000');c.blue.color.set(on?'#000830':(c.amb?'#ffffff':'#2050ff'));}
   c.x=clamp(c.x,-254,CITY+320);c.z=clamp(c.z,-34,CITY+34);c.dx=c.x-ox;c.dz=c.z-oz;
   c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;if(!c.boat){const g0=Math.max(groundAt(c.x,c.z),terrainH(c.x,c.z));if(c.ay===undefined){c.ay=g0;c.avy=0;c.g.rotation.order='YXZ';}
    if(c.ay>g0+0.05||c.avy>0.5){c.avy-=24*dt;c.ay+=c.avy*dt;if(c.ay<=g0){if(c.avy<-9&&c===P.car){shake=0.25;burst(c.x,g0+0.2,c.z,'#bfae8a',8,3,0.4);}c.ay=g0;c.avy=0;}}
@@ -1680,7 +1767,7 @@ function update(dt){
  for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.mode==='wrecked'&&c.wreckT>45&&Math.hypot(c.x-px,c.z-pz)>60){scene.remove(c.g);cars.splice(i,1);}}
  if(cars.filter(c=>c.mode==='traffic').length<(isTouch?18:24)&&Math.random()<dt)spawnTraffic(true);
  for(const p of peds)updPed(p,dt);
- if(state==='play'){for(const o of officers)updOfficer(o,dt);updWanted(dt);updSwatLevel(dt);}
+ if(state==='play'){for(const o of officers)updOfficer(o,dt);updWanted(dt);updSwatLevel(dt);updJobs(dt);}
  updProjs(dt);updParts(dt);updCoins(dt);updStars();
  for(const c of clouds)c.position.x+=dt*1.5;
  waveU.value=clock;if(Math.floor(clock*0.5)!==Math.floor((clock-dt)*0.5))dispatchFire();if(aerial&&!P.climb&&Math.hypot(aerial.c.x-P.x,aerial.c.z-P.z)>45)lowerAerial();foam.material.opacity=0.55+Math.sin(clock*0.9)*0.25;foam.position.x=CITY+66+Math.sin(clock*0.9)*1.5;updBeachFolk(dt);
@@ -1692,7 +1779,7 @@ function update(dt){
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*(wheelOpen?0.2:1);last=now;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.__dbg={cam:(y,p)=>{camYaw=y;camPitch=p;},spawnOfficer,makeHuman,rebuild:()=>rebuildPlayer(),S,get model(){return model;}};
-window.__game={P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
+window.__game={P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
 </script>
 </body>
 </html>
