@@ -218,6 +218,7 @@ const RIDES=[
  {id:'gold',name:'Vento GT Oro',icon:'✨',desc:'Solid-gold SUPERCAR. The fastest ride in Miami',cost:100000,type:'super',color:'#e8c547',spd:62,hp:16,sup:1,gold:1},
 ];
 const STORE_INFO={
+ ebike:{name:'VOLT E-BIKES',icon:'🛵',wall:'#f2f2f2',awn:'#7ed321',fg:'#7ed321'},
  marina:{name:'MIAMI MARINA',icon:'⚓',wall:'#fff',awn:'#1d6fd9',fg:'#5ef0ff'},
  realty:{name:'MIAMI REALTY',icon:'🏠',wall:'#efe9dd',awn:'#2f8f4e',fg:'#7dff8a'},
  blaster:{name:'BLASTER SHOP',icon:'🎯',wall:'#2a2d36',awn:'#d64550',fg:'#ff5a5a'},
@@ -352,7 +353,7 @@ function mergeGeos(list){let vc=0,ic=0;for(const g of list){vc+=g.attributes.pos
  for(const g of list){const n=g.attributes.position.count;pos.set(g.attributes.position.array,vo*3);nor.set(g.attributes.normal.array,vo*3);if(g.attributes.uv)uv.set(g.attributes.uv.array,vo*2);
   if(g.index){const a=g.index.array;for(let i=0;i<a.length;i++)idx[io+i]=a[i]+vo;io+=a.length;}else{for(let i=0;i<n;i++)idx[io+i]=vo+i;io+=n;}vo+=n;g.dispose();}
  const o=new THREE.BufferGeometry();o.setAttribute('position',new THREE.BufferAttribute(pos,3));o.setAttribute('normal',new THREE.BufferAttribute(nor,3));o.setAttribute('uv',new THREE.BufferAttribute(uv,2));o.setIndex(new THREE.BufferAttribute(idx,1));o.computeBoundingSphere();return o;}
-function buildBatches(){for(const k in batches){const b=batches[k];const m=new THREE.Mesh(mergeGeos(b.geos),b.material);m.castShadow=b.cast;m.receiveShadow=true;scene.add(m);}}
+function buildBatches(){for(const k in batches){const b=batches[k];const m=new THREE.Mesh(mergeGeos(b.geos),b.material);m.castShadow=b.cast;m.receiveShadow=true;scene.add(m);delete batches[k];}}
 function tiledBox(w,h,d,tile,exact){const g=new THREE.BoxGeometry(w,h,d);const uv=g.attributes.uv;const dims=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
  for(let f=0;f<6;f++)for(let v=0;v<4;v++){const i=f*4+v;const su=exact?dims[f][0]/tile:Math.max(1,Math.round(dims[f][0]/tile)),sv=exact?dims[f][1]/tile:Math.max(1,Math.round(dims[f][1]/tile));uv.setXY(i,uv.getX(i)*su,uv.getY(i)*sv);}return g;}
 const solids=[];const GRID=12;const grid=new Map();let stampN=0;
@@ -584,7 +585,7 @@ function buildCity(){
  const byD={ocean:[],havana:[],wynwood:[],brickell:[],downtown:[]};
  for(let i=0;i<NB;i++)for(let j=0;j<NB;j++)for(let a=0;a<2;a++)for(let b=0;b<2;b++)byD[distId(i,j)].push({i,j,a,b});
  for(const k in byD){const l=byD[k];for(let i=l.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[l[i],l[j]]=[l[j],l[i]];}}
- const special={downtown:['police','realty','blaster','bank','mart','gadget'],brickell:['cars','realty','blaster','style','cafe'],wynwood:['blaster','gadget','style','cafe','mart'],havana:['spray','blaster','mart','cafe','style','gadget'],ocean:['blaster','cafe','mart','style']};
+ const special={downtown:['police','realty','blaster','bank','mart','gadget'],brickell:['cars','realty','blaster','style','cafe'],wynwood:['ebike','blaster','gadget','style','cafe','mart'],havana:['spray','blaster','mart','cafe','style','gadget'],ocean:['blaster','ebike','cafe','mart','style']};
  let hn=0;
  for(const dist in byD)byD[dist].forEach(lt=>{
   const x0=lt.i*CELL+ROAD/2,z0=lt.j*CELL+ROAD/2,cx=x0+9+lt.a*18,cz=z0+9+lt.b*18;
@@ -849,8 +850,9 @@ function updPolice(c,dt){
 let nitroFuel=3;
 function updPlayerCar(c,dt){
  const inp=getMove();const thr=inp.y,steer=inp.x;let max=c.maxSpd;
- const hb=!S.ups.nitro&&jumpHeld();
- if(S.ups.nitro&&jumpHeld()&&nitroFuel>0){max*=1.6;c.speed+=30*dt;nitroFuel-=dt;if(Math.random()<0.5)burst(c.x-Math.sin(c.h)*2.4,0.5,c.z-Math.cos(c.h)*2.4,'#ff9f1c',1,2,0.3);}
+ const hb=!S.ups.nitro&&jumpHeld()&&!c.bike&&!c.boat;
+ if(c.bike&&edge.jump&&c.y<=0.01){c.vy=c.jumpV;burst(c.x,0.2,c.z,'#cfc8bc',4,2,0.3);}
+ if(S.ups.nitro&&jumpHeld()&&nitroFuel>0&&!c.bike){max*=1.6;c.speed+=30*dt;nitroFuel-=dt;if(Math.random()<0.5)burst(c.x-Math.sin(c.h)*2.4,0.5,c.z-Math.cos(c.h)*2.4,'#ff9f1c',1,2,0.3);}
  else nitroFuel=Math.min(3,nitroFuel+dt*0.5);
  const acc=c.superW?26:16;
  if(thr>0.1)c.speed+=(c.speed<0?32:acc)*thr*dt*(1-Math.max(0,c.speed)/max*0.5);else if(thr<-0.1)c.speed+=(c.speed>0?36:12)*thr*dt;else c.speed*=Math.pow(0.55,dt);
@@ -868,9 +870,9 @@ function updPlayerCar(c,dt){
  if(carVsWorld(c)){if(before>12){damageCar(c,1);shake=0.3;}c.speed*=0.35;c.vh=c.h;}
  c.steerVis=steer;
  c.body.rotation.z=lerpAngle(c.body.rotation.z,-steer*clamp(c.speed/30,-1,1)*0.06,Math.min(1,dt*6));
- c.body.rotation.x=lerpAngle(c.body.rotation.x,thr>0.1&&c.speed<max*0.8?-0.025:c.braking&&c.speed>3?0.03:0,Math.min(1,dt*5));}
-function carCollisions(){for(let i=0;i<cars.length;i++){const a=cars[i];for(let j=i+1;j<cars.length;j++){const b=cars[j];const dx=b.x-a.x,dz=b.z-a.z,d2=dx*dx+dz*dz;if(d2>16||d2<1e-6)continue;
- const d=Math.sqrt(d2),p=(4-d)/2,nx=dx/d,nz=dz/d;a.x-=nx*p;a.z-=nz*p;b.x+=nx*p;b.z+=nz*p;
+ c.body.rotation.x=lerpAngle(c.body.rotation.x,c.dirt&&thr>0.7&&c.speed<14&&c.speed>2?-0.45:thr>0.1&&c.speed<max*0.8?-0.025:c.braking&&c.speed>3?0.03:0,Math.min(1,dt*(c.dirt?3:5)));}
+function carCollisions(){for(let i=0;i<cars.length;i++){const a=cars[i];for(let j=i+1;j<cars.length;j++){const b=cars[j];const dx=b.x-a.x,dz=b.z-a.z,d2=dx*dx+dz*dz;const RR=(a.bike||b.bike)?1.4:4;if(d2>RR*RR||d2<1e-6)continue;
+ const d=Math.sqrt(d2),p=(RR-d)/2,nx=dx/d,nz=dz/d;a.x-=nx*p;a.z-=nz*p;b.x+=nx*p;b.z+=nz*p;
  const rel=Math.abs(a.speed-b.speed)+Math.abs(a.speed)*0.3+Math.abs(b.speed)*0.3;
  if(rel>8&&(a===P.car||b===P.car||a.mode==='police'||b.mode==='police')){if(!a.lastHit||clock-a.lastHit>0.5){a.lastHit=clock;damageCar(a,1,a!==P.car);damageCar(b,1,b!==P.car);shake=0.25;
   if(a===P.car||b===P.car){const o=a===P.car?b:a;if(o.mode==='traffic'||o.mode==='parked')addHeat(0.4);}}}
@@ -1282,11 +1284,12 @@ function updFoot(dt){
 function nearestCar(r){let best=null,bd=r;for(const c of cars){if(c.mode==='wrecked')continue;const d=Math.hypot(c.x-P.x,c.z-P.z);if(d<bd&&P.y<c.top+0.5){bd=d;best=c;}}return best;}
 function nearestStore(r,driving){let best=null,bd=r;const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;for(const s of stores){if(driving&&!s.drive)continue;const d=Math.hypot(s.x-px,s.z-pz);if(d<bd&&(driving||P.y<1.5)){bd=d;best=s;}}return best;}
 function showArea(big,small){const a=$('area');a.innerHTML=big+(small?`<small>${small}</small>`:'');a.style.opacity=1;clearTimeout(showArea.t);showArea.t=setTimeout(()=>a.style.opacity=0,2600);}
-function enterCar(c){if(c.mode==='traffic'){sub('🚗 You borrowed a car!');addHeat(1.1);say(c.x,c.top+1.2,c.z,pick(['Hey! That\'s my car!','¡Mi carro!','Come back!']));}
+function enterCar(c){if(c.bike){if(c.rental&&!c.owned){if(S.cash<5){sub('🛴 Need $5 to unlock a ZIP bike');return;}addCash(-5);rentT=0;rentCost=5;sub('🛴 ZIP bike unlocked! $2 per 30 seconds');}c.mode='player';P.car=c;P.vx=P.vz=P.vy=0;showArea(c.name,c.dirt?'Jump button = jump · full throttle = wheelie':'');return;}
+ if(c.mode==='traffic'){sub('🚗 You borrowed a car!');addHeat(1.1);say(c.x,c.top+1.2,c.z,pick(['Hey! That\'s my car!','¡Mi carro!','Come back!']));}
  else if(c.mode==='police'||c.mode==='roadblock'){sub(c.swat?'🚐 You took a SWAT VAN!':'🚓 You took a POLICE car!');addHeat(2);}else if(c.mode==='parked'&&!c.owned){sub('🚗 Hot-wired a parked car!');addHeat(0.6);}
  c.mode='player';P.car=c;model.g.visible=false;P.vx=P.vz=P.vy=0;showArea(c.name,c.type==='van'?'🎵 Ice cream jingle':pick(STATIONS));}
-function exitCar(){const c=P.car;if(!c)return;let land=null;if(c.boat){land=isLandNear(c.x,c.z);if(!land&&c.health>0){sub('🌊 Drive closer to land or a dock to get out');return;}}P.car=null;if(c.mode==='player')c.mode=c.health>0?'parked':'wrecked';c.speed=0;
- const rx=Math.cos(c.h),rz=-Math.sin(c.h);P.x=c.x+rx*(c.hw+1.1);P.z=c.z+rz*(c.hw+1.1);P.y=0.2;if(land){P.x=land.x;P.z=land.z;P.y=0.9;}P.vy=0;P.onGround=false;model.g.visible=true;P.airMax=P.y;}
+function exitCar(){const c=P.car;if(!c)return;let land=null;if(c.boat){land=isLandNear(c.x,c.z);if(!land&&c.health>0){sub('🌊 Drive closer to land or a dock to get out');return;}}P.car=null;if(c.bike&&c.rental)sub(`🛴 Ride ended. Total: $${rentCost}`);if(c.mode==='player')c.mode=c.health>0?'parked':'wrecked';c.speed=0;
+ const rx=Math.cos(c.h),rz=-Math.sin(c.h);P.x=c.x+rx*(c.hw+1.1);P.z=c.z+rz*(c.hw+1.1);P.y=0.2+(c.y||0);if(land){P.x=land.x;P.z=land.z;P.y=0.9;}P.vy=0;P.onGround=false;model.g.visible=true;P.airMax=P.y;}
 function doAction(){
  if(P.car){const sp=nearestStore(5,true);if(sp&&Math.abs(P.car.speed)<3){openStore(sp);return;}exitCar();return;}
  const s=nearestStore(3.2),c=nearestCar(3.6);
@@ -1296,7 +1299,7 @@ function updPrompt(){let t='';const K=isTouch?'Tap 🚪':'Press <b>E</b>';
  if(P.car){const sp=nearestStore(5,true);t=sp?`${K} to drive into ${sp.name}`:`${K} to get out`;}
  else{const s=nearestStore(3.2),c=nearestCar(3.6);
   if(s&&(!c||Math.hypot(s.x-P.x,s.z-P.z)<Math.hypot(c.x-P.x,c.z-P.z)))t=s.type==='home'&&!(S.homes||[]).includes(s.id)?`🏷️ <b>${s.name}</b> for sale: $${fmt(s.price)} · ${K} to look inside`:`${K} to enter <b>${s.name}</b>`;
-  else if(c)t=`${K} to ${c.mode==='traffic'||c.mode==='police'?'borrow':'drive'} the <b>${c.name}</b>`;}
+  else if(c)t=c.rental&&!c.owned?`${K} to rent the <b>ZIP e-bike</b> ($5 + $2/30s)`:`${K} to ${c.mode==='traffic'||c.mode==='police'?'borrow':c.bike?'ride':'drive'} the <b>${c.name}</b>`;}
  promptText=t;$('bAct').textContent=P.car?'⬇️':(t?'🚪':'·');}
 
 // ---------------------------------------------------------------- stores
@@ -1306,7 +1309,7 @@ $('storeClose').onclick=()=>{state='play';showScreen(null);rebuildPlayer();updWe
 function card(icon,name,desc,btnHtml,tag=''){return `<div class="card"><div class="ic">${icon}</div><div class="inf"><div class="nm">${name}${tag?`<span class="tag">${tag}</span>`:''}</div><div class="ds">${desc}</div></div>${btnHtml}</div>`;}
 const buyBtn=(cost,act,label)=>`<button class="btn sm" data-act="${act}" ${S.cash<cost?'disabled':''}>${label||'$'+fmt(cost)}</button>`;
 function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${s.name}`;$('storeCash').textContent='$'+fmt(S.cash);
- const tabs={marina:['Boats'],realty:['Homes for Sale'],home:['My Home'],blaster:['Weapons','Throwables','Upgrades'],gadget:['Gear'],style:['Customize','Characters','Accessories'],mart:['Snacks','Mischief'],cafe:['Menu','Mischief'],cars:['Cars'],bank:['Bank'],police:['Front Desk'],hotel:['Front Desk','Gift Shop'],spray:['Garage']}[s.type];
+ const tabs={ebike:['E-Bikes'],marina:['Boats'],realty:['Homes for Sale'],home:['My Home'],blaster:['Weapons','Throwables','Upgrades'],gadget:['Gear'],style:['Customize','Characters','Accessories'],mart:['Snacks','Mischief'],cafe:['Menu','Mischief'],cars:['Cars'],bank:['Bank'],police:['Front Desk'],hotel:['Front Desk','Gift Shop'],spray:['Garage']}[s.type];
  $('storeTabs').innerHTML=tabs.length>1?tabs.map((t,i)=>`<button class="btn sm ${i===storeTab?'sel':''}" data-tab="${i}">${t}</button>`).join(''):'';
  const tab=tabs[storeTab];let h='';
  if(tab==='Weapons')for(const w of W.filter(w=>!w.thrown)){const own=S.gad[w.id]>0;h+=card(w.icon,w.name,w.desc+(w.inf?' · buy once, unlimited':` · ${wPack(w)} shots per pack`),w.inf&&own?'<b>✓ OWNED</b>':buyBtn(own?Math.round(w.cost*0.4):w.cost,'wbuy:'+w.id,own?'Ammo $'+fmt(Math.round(w.cost*0.4)):null),own?(w.inf?'owned':'ammo '+S.gad[w.id]):'');}
@@ -1318,7 +1321,8 @@ function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${
   else{h+=card('🛏️','Make this my spawn point','Start here every time you play',S.home&&S.home.id===H.id?'<b>✓ HOME</b>':`<button class="btn sm" data-act="spawn:${H.id}">Set</button>`);
    h+=card('😴','Rest','Lie low inside. Clears your wanted level.',`<button class="btn sm" data-act="rest">Rest</button>`);
    if(H.roof)h+=card('🛗',H.mansion?'Go up to the roof terrace':'Elevator to the roof','',`<button class="btn sm" data-act="hroof:${H.id}">Go</button>`);
-   h+='<div class="sec">🚗 Garage</div>';const rs=RIDES.filter(r=>S.rides.includes(r.id));if(!rs.length)h+='<div class="ds">No cars yet. Buy one at MIAMI MOTORS.</div>';for(const r of rs)h+=card(r.icon,r.name,'Bring it out to your driveway',`<button class="btn sm" data-act="ride:${r.id}">Bring out</button>`);}}
+   h+='<div class="sec">🚗 Garage</div>';const rs=RIDES.filter(r=>S.rides.includes(r.id));if(!rs.length)h+='<div class="ds">No cars yet. Buy one at MIAMI MOTORS.</div>';for(const r of rs)h+=card(r.icon,r.name,'Bring it out to your driveway',`<button class="btn sm" data-act="ride:${r.id}">Bring out</button>`);for(const b of BIKES.filter(b=>(S.bikes||[]).includes(b.id)))h+=card(b.icon,b.name,'Bring it out',`<button class="btn sm" data-act="bike:${b.id}">Bring out</button>`);}}
+ if(tab==='E-Bikes'){h+='<div class="ds">Or rent a lime-green ZIP bike from the racks around town ($5 + $2 per 30s).</div>';for(const b of BIKES){const own=(S.bikes||[]).includes(b.id);h+=card(b.icon,b.name,b.desc+` · top speed ${b.spd}`,own?`<button class="btn sm" data-act="bike:${b.id}">Bring out</button>`:buyBtn(b.cost,'bike:'+b.id),own?'owned':'');}}
  if(tab==='Boats'){h+='<div class="ds">Your boats are delivered to the end of the dock. Drive back to land or a dock to get out.</div>';for(const b of BOATS){const own=(S.boats||[]).includes(b.id);h+=card(b.icon,b.name,b.desc+` · top speed ${b.spd}`,own?`<button class="btn sm" data-act="boat:${b.id}">Deliver</button>`:buyBtn(b.cost,'boat:'+b.id),own?'owned':'');}}
  if(tab==='Gear')for(const u of UPS)h+=card(u.icon,u.name,u.desc,S.ups[u.id]?'<b>✓ OWNED</b>':buyBtn(u.cost,'up:'+u.id));
  if(tab==='Upgrades'&&s.type==='gadget')for(const u of UPS)h+=card(u.icon,u.name,u.desc,S.ups[u.id]?'<b>✓ OWNED</b>':buyBtn(u.cost,'up:'+u.id));
@@ -1355,6 +1359,7 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='spawn'){const H=HOMES.find(x=>x.id===id);S.home={x:H.x,z:H.z,name:H.name,id};sub('🛏️ You will start at '+H.name);}
  if(a==='rest'){heat=0;clearCops();sub('😴 You rested. The cops gave up looking for you.');}
  if(a==='hroof'){const H=HOMES.find(x=>x.id===id);P.x=H.roof.x;P.z=H.roof.z;P.y=H.roof.y;P.vy=0;P.airMax=P.y;state='play';showScreen(null);rebuildPlayer();updWeapon();sub('🌇 What a view!');save();return;}
+ if(a==='bike'){const b=BKI[id];S.bikes=S.bikes||[];if(S.bikes.includes(id)||pay(b.cost)){if(!S.bikes.includes(id))S.bikes.push(id);const old=cars.find(c=>c.bikeOwned===id);if(old&&old!==P.car){scene.remove(old.g);cars.splice(cars.indexOf(old),1);}const gp=s.garage||s;const c=makeBike(gp.x+1,gp.z+1,Math.random()*6,'parked',id,{owned:true});c.bikeOwned=id;sub(b.icon+' Your '+b.name+' is parked outside!');}}
  if(a==='boat'){const b=BI[id];S.boats=S.boats||[];if(S.boats.includes(id)||pay(b.cost)){if(!S.boats.includes(id))S.boats.push(id);const old=cars.find(c=>c.boatOwned===id);if(old&&old!==P.car){scene.remove(old.g);cars.splice(cars.indexOf(old),1);}const c=makeBoat(s.slip.x,s.slip.z,Math.PI/2,'parked',id,{owned:true});c.boatOwned=id;sub(b.icon+' Your '+b.name+' is waiting at the end of the dock!');P.wp={x:s.slip.x,z:s.slip.z-4,name:b.name};}}
  if(a==='wbuy'){const w=WI[id];const own=S.gad[id]>0;const c=own&&!w.thrown?Math.round(w.cost*0.4):w.cost;if(pay(c)){S.gad[id]=w.inf?1:(S.gad[id]||0)+wPack(w);sub(`${w.icon} ${w.name}${w.inf?' unlocked!':' +'+wPack(w)}`);if(!own){const l=ownedWeapons();curG=l.indexOf(id);}}}
  if(a==='wup'){const w=WI[id];if(lvl(id)<3&&pay(upCost(w))){S.wl[id]=lvl(id)+1;sub(`${w.icon} ${w.name} upgraded to Lv ${lvl(id)+1}!`);}}
@@ -1386,7 +1391,7 @@ function updHud(dt){const st=stars();const fl=seen&&Math.sin(clock*8)>0;const k=
  if(k!==hudKey){hudKey=k;$('money').textContent='$'+fmt(S.cash);let w='';for(let i=0;i<5;i++)w+=`<span class="${i<st?'on':'off'}">★</span>`;if(P.gumT>0)w='🫧 '+w;$('wanted').innerHTML=w;$('wanted').classList.toggle('flash',fl);}
  let help='';if(promptText)help=promptText+'<br>';
  const hot=nearestStar<25?'🔥 Hot!':nearestStar<70?'Warm':'Cold';
- if(P.wp){const d=Math.hypot(P.wp.x-(P.car?P.car.x:P.x),P.wp.z-(P.car?P.car.z:P.z));if(d<6)P.wp=null;else help+=`📍 <b>${P.wp.name}</b> · ${Math.round(d)}m<br>`;}if(!S.blasterSeen)help+='🎯 Buy weapons at the <b>BLASTER SHOP</b> (🎯 on the radar)<br>';help+=nearestStar<1e8?`🌟 Find the hidden <b>Golden Stars</b> ${setFound}/5 · ${Math.round(nearestStar)}m · ${hot}`:'🌟 New Golden Stars coming...';
+ if(P.car&&P.car.rental&&!P.car.owned)help+=`🛴 ZIP ride: $${rentCost} so far<br>`;if(P.wp){const d=Math.hypot(P.wp.x-(P.car?P.car.x:P.x),P.wp.z-(P.car?P.car.z:P.z));if(d<6)P.wp=null;else help+=`📍 <b>${P.wp.name}</b> · ${Math.round(d)}m<br>`;}if(!S.blasterSeen)help+='🎯 Buy weapons at the <b>BLASTER SHOP</b> (🎯 on the radar)<br>';help+=nearestStar<1e8?`🌟 Find the hidden <b>Golden Stars</b> ${setFound}/5 · ${Math.round(nearestStar)}m · ${hot}`:'🌟 New Golden Stars coming...';
  if(state!=='play')help='';$('help').innerHTML=help;$('help').style.display=help?'block':'none';
  const bar=$('bar');if(P.car){bar.style.display='block';bar.firstChild.style.width=Math.max(0,P.car.health/P.car.maxHealth*100)+'%';bar.firstChild.style.background='#4fc36a';}
  else if(S.ups.jetpack){bar.style.display='block';bar.firstChild.style.width=(P.fuel/4*100)+'%';bar.firstChild.style.background='#5ec8ff';}else bar.style.display='none';
@@ -1402,6 +1407,7 @@ function drawRadar(){const W=440,H=300,s=2.6,cx=W/2,cy=H*0.62;rc.clearRect(0,0,W
  for(let i=0;i<=NB;i++){let a=T(i*CELL,-6),b=T(i*CELL,CITY+6);rc.beginPath();rc.moveTo(a[0],a[1]);rc.lineTo(b[0],b[1]);rc.stroke();a=T(-6,i*CELL);b=T(CITY+6,i*CELL);rc.beginPath();rc.moveTo(a[0],a[1]);rc.lineTo(b[0],b[1]);rc.stroke();}
  rc.font='26px serif';rc.textAlign='center';rc.textBaseline='middle';
  for(const st of stores){const p=T(st.x,st.z);if(p[0]>-10&&p[0]<W+10&&p[1]>-10&&p[1]<H+10){if(st.type==='blaster'){rc.font='38px serif';rc.fillStyle='#d64550';rc.beginPath();rc.arc(p[0],p[1],22,0,7);rc.fill();}rc.fillText(st.icon,p[0],p[1]);rc.font='26px serif';}}
+ rc.font='18px serif';for(const b of bikeStations){const p=T(b.x,b.z);if(p[0]>-10&&p[0]<W+10&&p[1]>-10&&p[1]<H+10)rc.fillText('🛴',p[0],p[1]);}rc.font='26px serif';
  for(const g of goldStars)if(!g.got&&Math.hypot(g.x-px,g.z-pz)<60){const p=T(g.x,g.z);rc.fillText('🌟',p[0],p[1]);}
  const blink=Math.sin(clock*12)>0;
  for(const o of officers){const p=T(o.x,o.z);rc.fillStyle=o.stun>0?'#9ff4ff':(blink?'#ff3b3b':'#3b6bff');rc.beginPath();rc.arc(p[0],p[1],6,0,7);rc.fill();}
@@ -1492,11 +1498,52 @@ function spawnBeachFolk(){for(let i=0;i<5;i++){const h=makeHuman(randLook(),Math
  for(let i=0;i<(isTouch?3:6);i++){const h=makeHuman(randLook(),randEq());const p={h,x:CITY+30+Math.random()*30,z:Math.random()*CITY,dir:Math.random()<0.5?1:-1,spd:MR(1.1,1.5)};h.g.position.set(p.x,0.06,p.z);scene.add(h.g);beachFolk.push(p);}}
 function updBeachFolk(dt){const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;for(const p of beachFolk){p.z+=p.dir*p.spd*dt;if(p.z<-20||p.z>CITY+20)p.dir*=-1;const d=Math.hypot(p.x-px,p.z-pz);p.h.g.visible=d<90;if(!p.h.g.visible)continue;p.h.g.position.set(p.x,0.06,p.z);p.h.g.rotation.y=p.dir>0?0:Math.PI;if(d<45)animHuman(p.h,p.spd,false,dt);}}
 
+// ================= E-BIKES: ZIP rentals + VOLT E-BIKES shop
+const BIKES=[
+ {id:'scooter',name:'City Scooter',icon:'🛴',desc:'Light e-scooter for zipping around',cost:300,kind:'scooter',spd:12,jump:3,col:'#2b2f3a'},
+ {id:'cruiser',name:'Beach Cruiser E-Bike',icon:'🚲',desc:'Comfy cruiser for the boardwalk',cost:800,kind:'ebike',spd:14,jump:3.5,col:'#2ec4b6'},
+ {id:'commuter',name:'Volt Commuter',icon:'🚲',desc:'Fast commuter e-bike',cost:2000,kind:'ebike',spd:18,jump:4,col:'#d64550'},
+ {id:'bee',name:'Storm Bee',icon:'🏍️',desc:'Electric dirt bike (Surron-style). Wheelies + jumps!',cost:6000,kind:'dirt',spd:25,jump:6.5,col:'#1a1a1a'},
+ {id:'stormx',name:'Storm X Ultra',icon:'🏍️',desc:'The beast. Huge jumps, top speed 30',cost:15000,kind:'dirt',spd:31,jump:8.5,col:'#ff6a00'},
+];
+const BKI={};BIKES.forEach(b=>BKI[b.id]=b);
+const bikeStations=[];
+function bikeWheel(r,t,knobby){const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.TorusGeometry(r,t,8,24).rotateY(Math.PI/2),mat('#151515',{roughness:0.9})));
+ const rim=new THREE.Mesh(new THREE.CylinderGeometry(r*0.75,r*0.75,0.03,16).rotateZ(Math.PI/2),new THREE.MeshStandardMaterial({color:'#9aa0a8',metalness:0.8,roughness:0.3,transparent:true,opacity:knobby?1:0.35}));g.add(rim);
+ g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.1,8).rotateZ(Math.PI/2),M.metal));g.rotation.order='YXZ';g.traverse(o=>{if(o.isMesh)o.castShadow=true;});return g;}
+function makeBike(x,z,h,mode,id,opt={}){
+ const B=opt.rental?{name:'ZIP Rental E-Bike',kind:'ebike',spd:15,jump:3.5,col:'#7ed321'}:BKI[id];
+ const g=new THREE.Group(),body=new THREE.Group();g.add(body);const fm=new THREE.MeshPhysicalMaterial({color:B.col,metalness:0.4,roughness:0.3,clearcoat:1});
+ const tube=(x1,y1,z1,x2,y2,z2,r=0.03,m=fm)=>{const a=new THREE.Vector3(x1,y1,z1),b=new THREE.Vector3(x2,y2,z2);const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,a.distanceTo(b),8),m);me.position.copy(a).lerp(b,0.5);me.lookAt(b);me.rotateX(Math.PI/2);me.castShadow=true;body.add(me);return me;};
+ let wheels=[],wr=0.33,top=0.35,seat=0.9;
+ if(B.kind==='scooter'){wr=0.12;const w1=bikeWheel(wr,0.035),w2=bikeWheel(wr,0.035);w1.position.set(0,wr,0.45);w2.position.set(0,wr,-0.45);w1.userData.front=true;g.add(w1,w2);wheels=[w1,w2];
+  addM(body,new THREE.BoxGeometry(0.16,0.05,0.8),fm,0,0.2,0);tube(0,0.2,0.42,0,1.05,0.48,0.025);tube(-0.25,1.05,0.48,0.25,1.05,0.48,0.02,M.dark);top=0.23;}
+ else{const dirt=B.kind==='dirt';wr=dirt?0.36:0.33;const w1=bikeWheel(wr,dirt?0.07:0.035,dirt),w2=bikeWheel(wr,dirt?0.07:0.035,dirt);const wb=dirt?0.65:0.55;w1.position.set(0,wr,wb);w2.position.set(0,wr,-wb);w1.userData.front=true;g.add(w1,w2);wheels=[w1,w2];
+  tube(0,wr,wb,0,wr+0.55,wb-0.12,0.03,M.metal);tube(0,wr+0.5,wb-0.15,0,wr+0.3,-0.05,0.04);tube(0,wr+0.3,-0.05,0,wr,-wb,0.03);tube(0,wr+0.3,-0.05,0,wr+0.62,-0.2,0.035);tube(0,wr+0.62,-0.2,0,wr,-wb,0.025);
+  tube(-0.28,wr+0.6,wb-0.1,0.28,wr+0.6,wb-0.1,0.018,M.dark);addM(body,new THREE.BoxGeometry(0.16,0.06,0.3),M.dark,0,wr+0.66,-0.22);
+  addM(body,new THREE.BoxGeometry(0.14,0.2,0.36),dirt?fm:M.dark,0,wr+0.32,0.15);
+  if(dirt){addM(body,new THREE.BoxGeometry(0.3,0.12,0.5),fm,0,wr+0.58,-0.35);addM(body,new THREE.BoxGeometry(0.25,0.18,0.03),mat('#ffffff'),0,wr+0.52,wb+0.02);addM(body,new THREE.BoxGeometry(0.08,0.4,0.5),fm,0,wr+0.28,wb*0.2);}
+  if(opt.rental){addM(body,new THREE.BoxGeometry(0.3,0.15,0.2),mat('#7ed321'),0,wr+0.45,wb+0.05);}
+  top=wr+0.45;seat=wr+0.66;}
+ g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
+ const c={g,body,bodyMat:fm,base:new THREE.Color(B.col),x,z,h,y:0,vy:0,speed:0,mode,health:5,maxHealth:5,hw:0.35,hl:0.95,top:top+0.6,cruise:0,wheels,red:null,blue:null,
+  stun:0,reverse:0,stuckT:0,deployed:2,wreckT:0,dx:0,dz:0,maxSpd:B.spd,dir:0,road:0,next:0,owned:!!opt.owned,type:'bike_'+B.kind,bike:true,dirt:B.kind==='dirt',jumpV:B.jump,standY:B.kind==='scooter'?0.22:wr+0.3,name:opt.name||B.name,rental:!!opt.rental,bikeId:id};
+ cars.push(c);return c;}
+function groundAt(x,z){let gy=0;for(const s of query(x,z,0.5))if(x>s.minX&&x<s.maxX&&z>s.minZ&&z<s.maxZ&&s.maxY<0.65&&s.maxY>gy)gy=s.maxY;return gy;}
+function buildBikeStations(){const r=mulberry32(77);for(let k=0;k<14;k++){const i=Math.floor(r()*NB),j=Math.floor(r()*NB),e=Math.floor(r()*4);const x0=i*CELL+ROAD/2,z0=j*CELL+ROAD/2;let x,z,hh;
+  if(e===0){x=x0+18;z=z0+2.4;hh=Math.PI/2;}else if(e===1){x=x0+33.6;z=z0+18;hh=0;}else if(e===2){x=x0+18;z=z0+33.6;hh=Math.PI/2;}else{x=x0+2.4;z=z0+18;hh=0;}
+  const along=hh?[1,0]:[0,1];{const rk=new THREE.Mesh(new THREE.BoxGeometry(along[0]?4:0.1,0.08,along[1]?4:0.1),mat('#7ed321',{emissive:'#2f6a10',emissiveIntensity:0.3}));rk.position.set(x,0.55,z);scene.add(rk);for(const q of [-1,1]){const pl=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.45,6),M.pole);pl.position.set(x+along[0]*q*2,0.35,z+along[1]*q*2);scene.add(pl);}}
+  bikeStations.push({x,z});for(let b=0;b<3;b++){const o=(b-1)*1.2;const c=makeBike(x+along[0]*o,z+along[1]*o,hh+Math.PI/2,'parked','zip',{rental:true});}}}
+let rentT=0,rentCost=0;
+function updRide(dt){const c=P.car;if(!c||!c.bike)return;
+ if(c.rental){rentT+=dt;if(rentT>=30){rentT-=30;if(S.cash>=2){addCash(-2);rentCost+=2;}else{sub('🛴 Out of money. Ride ended.');exitCar();return;}}}
+ model.g.visible=true;const gy=groundAt(c.x,c.z);model.g.position.set(c.x,gy+c.y+c.standY,c.z);model.g.rotation.set(0,c.h,0);model.g.rotateZ(-(c.steerVis||0)*clamp(c.speed/20,0,1)*0.35);animHuman(model,0,c.y>0.05,dt);}
+
 // ---------------------------------------------------------------- spawn world actors
 for(let i=0;i<(isTouch?20:26);i++)spawnTraffic(false);
 for(const p of parkedSpots)makeCar(p.x,p.z,p.h,'parked');
 for(let i=0;i<(isTouch?18:28);i++)spawnPed(0);
-makeBoat(CITY+70,26,Math.PI/2,'parked','jetski');makeBoat(CITY+86,17.5,Math.PI/2,'parked','speed');makeBoat(CITY+100,26.5,Math.PI/2,'parked','jetski',{color:'#ff4fa3'});spawnBeachFolk();
+makeBoat(CITY+70,26,Math.PI/2,'parked','jetski');makeBoat(CITY+86,17.5,Math.PI/2,'parked','speed');makeBoat(CITY+100,26.5,Math.PI/2,'parked','jetski',{color:'#ff4fa3'});spawnBeachFolk();buildBikeStations();buildBatches();
 newStarSet();
 
 // ---------------------------------------------------------------- main loop
@@ -1510,7 +1557,7 @@ function update(dt){
   if((qHeld&&clock-qT>0.25||swapHeld&&clock-swapT>0.3)&&!wheelOpen)openWheel();
   fireCD-=dt;aimT=Math.max(0,aimT-dt);{const w=curWeapon();if(w&&!wheelOpen){const auto=w.type==='auto'||w.type==='cone';if((auto&&(keys.KeyF||btnUse)||edge.use)&&fireCD<=0)fire(w,dt);}else if(edge.use&&!w)sub('🎯 No weapons! Find a BLASTER SHOP (🎯 on the radar)');}
   if(P.speedT>0)P.speedT-=dt;if(P.bounceT>0)P.bounceT-=dt;
-  if(P.car){updPlayerCar(P.car,dt);P.x=P.car.x;P.z=P.car.z;P.y=0;}else updFoot(dt);
+  if(P.car){updPlayerCar(P.car,dt);P.x=P.car.x;P.z=P.car.z;P.y=0;updRide(dt);}else updFoot(dt);
   updPrompt();
  }
  equipUpdate();if(state==='play')placeGun(dt);
@@ -1519,7 +1566,7 @@ function update(dt){
  for(const c of cars){const ox=c.x,oz=c.z;c.ox=ox;c.oz=oz;
   if(c.mode==='traffic')updTraffic(c,dt);else if(c.mode==='police'&&state!=='title')updPolice(c,dt);else if(c.mode==='wrecked'){c.wreckT+=dt;if(Math.random()<dt*3)burst(c.x,1.2,c.z,'#666666',1,1,1.5,-2);}
   c.x=clamp(c.x,-34,CITY+320);c.z=clamp(c.z,-34,CITY+34);c.dx=c.x-ox;c.dz=c.z-oz;
-  c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;if(c.boat){const wh=waveH(c.x,c.z,clock);c.g.position.y=wh+0.05;c.body.rotation.x=(waveH(c.x,c.z+2,clock)-waveH(c.x,c.z-2,clock))*-0.25-Math.min(0.12,Math.max(0,c.speed)*0.004);c.body.rotation.z=(waveH(c.x+1.5,c.z,clock)-waveH(c.x-1.5,c.z,clock))*0.3;c.top=c.baseTop||(c.baseTop=c.top);}for(const w of c.wheels){w.rotation.x+=c.speed*dt/0.36;if(w.userData.front)w.rotation.y=(c===P.car?-(c.steerVis||0)*0.45:0);}
+  c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;if(c.bike){if(c.y>0||c.vy>0){c.vy-=24*dt;c.y+=c.vy*dt;if(c.y<=0){c.y=0;c.vy=0;}}c.g.position.y=groundAt(c.x,c.z)+c.y;c.body.rotation.z=-(c===P.car?(c.steerVis||0)*clamp(c.speed/20,0,1)*0.3:0);}if(c.boat){const wh=waveH(c.x,c.z,clock);c.g.position.y=wh+0.05;c.body.rotation.x=(waveH(c.x,c.z+2,clock)-waveH(c.x,c.z-2,clock))*-0.25-Math.min(0.12,Math.max(0,c.speed)*0.004);c.body.rotation.z=(waveH(c.x+1.5,c.z,clock)-waveH(c.x-1.5,c.z,clock))*0.3;c.top=c.baseTop||(c.baseTop=c.top);}for(const w of c.wheels){w.rotation.x+=c.speed*dt/0.36;if(w.userData.front)w.rotation.y=(c===P.car?-(c.steerVis||0)*0.45:0);}
   if(c.tail){const br=c.health/c.maxHealth<0.5?'dead':c.braking?'on':'off';if(br!==c.tailS){c.tailS=br;if(c.tail.isMeshBasicMaterial)c.tail.color.set(br==='on'?'#ff3a3a':br==='dead'?'#200404':'#7a0c0c');else c.tail.emissiveIntensity=br==='on'?3:br==='dead'?0:0.4;}}
   if(c.mode!=='wrecked'&&c.health/c.maxHealth<0.4&&Math.random()<dt*4)burst(c.x+Math.sin(c.h)*c.hl*0.7,1.1,c.z+Math.cos(c.h)*c.hl*0.7,'#777777',1,0.8,1.2,-2);c.g.visible=Math.hypot(c.x-px,c.z-pz)<220;}
  carCollisions();
