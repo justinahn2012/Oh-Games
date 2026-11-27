@@ -726,7 +726,7 @@ function makeAmbulance(x,z,h){const c=makeCar(x,z,h,'parked',{type:'van',color:'
  c.red=new THREE.MeshBasicMaterial({color:'#ff2020'});c.blue=new THREE.MeshBasicMaterial({color:'#ffffff'});addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.red,-0.4,2.62,1.6,false);addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.blue,0.4,2.62,1.6,false);return c;}
 function spawnJobCar(s){const x=s.x+Math.sin(0)*0,z=s.z;let c;
  if(S.job==='fire')c=makeFireTruck(x+3,z+3,0,'parked');else if(S.job==='medic')c=makeAmbulance(x+3,z+3,0);
- else{c=makeCar(x+3,z+3,0,'police',S.job==='swat'?{type:'van',color:'#1e232b',hp:14,spd:36+polSpd()}:{spd:40+polSpd()});c.mode='parked';c.jobCar=true;if(S.job==='swat')c.name='SWAT Van';
+ else{c=makeCar(x+3,z+3,0,'police',S.job==='swat'?{type:'armored',color:'#1e232b',hp:14,spd:40+polSpd()}:{spd:72+polSpd()});c.mode='parked';c.jobCar=true;if(S.job==='swat')c.name='SWAT Truck';
   if(S.job==='police'){const m=makePoliceMoto(x-2,z+3,0);for(let t=0;t<15;t++)carVsWorld(m);}}
  c.owned=true;for(let t=0;t<15;t++)carVsWorld(c);sub('🚘 Your vehicle is outside!');P.wp={x:c.x,z:c.z,name:c.name};}
 // ---- missions
@@ -947,6 +947,8 @@ const CAR_TYPES={
   prof:[[-2.15,1.06],[-2.07,1.2],[0.7,1.22],[2.03,1.18],[2.15,1.0]]},
  pickup:{name:'Gator Pickup',len:5.3,w:2.0,clr:0.45,belt:1.18,roof:1.92,cab:[-0.6,-0.5,0.8,1.45],R:0.42,wf:1.75,wr:-1.62,ex:9,sx:7,clad:1,bed:1,
   prof:[[-2.65,1.02],[-2.53,1.18],[1.4,1.2],[2.35,1.08],[2.65,0.86]]},
+ armored:{name:'SWAT Truck',len:5.0,w:2.3,clr:0.55,belt:1.5,roof:2.15,cab:[-2.25,-2.18,0.6,1.2],R:0.5,wf:1.62,wr:-1.6,ex:14,sx:12,clad:1,armored:1,rails:1,
+  prof:[[-2.5,1.3],[-2.44,1.5],[1.2,1.52],[2.38,1.42],[2.5,1.18]]},
  super:{name:'Vento GT',len:4.6,w:2.0,clr:0.2,belt:0.8,roof:1.2,cab:[0,0,0,0]},
  van:{name:'Ice Cream Van',len:5.2,w:2.0,clr:0.4,belt:1.3,roof:2.38,cab:[0.95,1.0,1.05,1.95],R:0.38,wf:1.75,wr:-1.75,ex:10,sx:9,van:1,
   prof:[[-2.6,2.2],[-2.48,2.42],[0.9,2.42],[1.05,1.32],[1.95,1.3],[2.35,1.12],[2.6,0.9]]},
@@ -1017,6 +1019,9 @@ function carGeos(type){if(geoCache[type])return geoCache[type];const t=CAR_TYPES
  for(const s of(t.sporty?[-0.55,-0.4,0.4,0.55]:[0.5]))chrome.push(gx(new THREE.CylinderGeometry(0.045,0.045,0.12,12).rotateX(Math.PI/2),s*Wm,S.B(-S.L+0.15)+0.02,-S.L+0.1));
  // type extras
  if(t.sporty&&!t.open)paintX.push(gx(boxG(Wm*1.5,0.04,0.32),0,S.T(-S.L+0.3)+0.17,-S.L+0.32),gx(boxG(0.05,0.17,0.18),Wm*0.55,S.T(-S.L+0.3)+0.08,-S.L+0.35),gx(boxG(0.05,0.17,0.18),-Wm*0.55,S.T(-S.L+0.3)+0.08,-S.L+0.35));
+ if(t.armored){const fz=S.L+0.12;black.push(gx(boxG(t.w*0.9,0.12,0.12),0,0.75,fz),gx(boxG(t.w*0.9,0.12,0.12),0,1.15,fz));for(const x of[-0.6,-0.2,0.2,0.6])black.push(gx(boxG(0.1,0.55,0.12),x*Wm,0.95,fz));
+  for(const s of[-1,1]){black.push(gx(boxG(0.3,0.06,2.4),s*(Wm+0.08),0.72,0));black.push(gx(boxG(0.08,0.6,0.08),s*(Wm-0.1),t.belt+0.35,t.cab[3]-0.05));}
+  black.push(gx(boxG(t.w*0.8,0.06,1.8),0,t.roof+0.12,-0.6));led.push(gx(boxG(t.w*0.55,0.07,0.06),0,t.roof+0.1,t.cab[2]+0.1));}
  if(t.rails)for(const s of[-1,1])black.push(gx(boxG(0.05,0.05,t.cab[2]-t.cab[1]+0.2),s*Wm*0.66,t.roof+0.05,(t.cab[1]+t.cab[2])/2));
  if(t.bed){const z0=-S.L+0.12,z1=t.cab[0]-0.06;black.push(gx(boxG(t.w-0.32,0.04,z1-z0),0,t.belt+0.03,(z0+z1)/2));for(const s of[-1,1])paintX.push(gx(boxG(0.08,0.1,z1-z0),s*(Wm-0.12),t.belt+0.05,(z0+z1)/2));paintX.push(gx(boxG(t.w-0.24,0.1,0.08),0,t.belt+0.05,z0));}
  if(t.jeep){const rb=new THREE.TorusGeometry(Wm*0.78,0.045,8,20,Math.PI);for(const z of[-0.45,-1.55])black.push(gx(rb.clone(),0,t.belt+0.02,z));black.push(gx(boxG(0.09,0.09,1.12),Wm*0.78,t.belt+Wm*0.78,-1.0),gx(boxG(0.09,0.09,1.12),-Wm*0.78,t.belt+Wm*0.78,-1.0));
@@ -1051,13 +1056,17 @@ function buildSuper(color,o){const inner=SUPER.root.clone(true);const paint=new 
  const L=Math.max(SUPER.size.x,SUPER.size.z)/2,Wd=Math.min(SUPER.size.x,SUPER.size.z)/2;
  return{rot,paint,tail,wheels,hl:L,hw:Wd,top:SUPER.size.y};}
 const cars=[];
-function polTex(){const [c,x]=cvs(256,64);x.clearRect(0,0,256,64);x.font='bold 46px Arial Black, Arial';x.fillStyle='#1f3a8a';x.textAlign='center';x.textBaseline='middle';x.fillText('POLICE',128,34);return toTex(c,false);}
-let POL_TEX=null;
+function polTex(txt='POLICE',col='#1f3a8a'){const [c,x]=cvs(256,64);x.clearRect(0,0,256,64);x.font='bold 46px Arial Black, Arial';x.fillStyle=col;x.textAlign='center';x.textBaseline='middle';x.fillText(txt,128,34);return toTex(c,false);}
+let POL_TEX=null,SWAT_DEC=null;
 function makeCar(x,z,h,mode,opt={}){
- const police=mode==='police';const type=opt.type||(police?'sedan':Math.random()<0.12?'super':pick(['sedan','sedan','sedan','suv','suv','hatch','sport','conv','conv','jeep','pickup']));const t=CAR_TYPES[type];
- if(type==='super'){const color=opt.color||pick(['#b0101a','#f2c230','#0d0d0f','#ffffff','#1e6fd9','#ff6a00','#3ec6c1','#ff7eb6']);const sp=buildSuper(color,opt);const g=new THREE.Group(),body=new THREE.Group();g.add(body);body.add(sp.rot);g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
-  const hp=opt.hp||6;const car={g,body,bodyMat:sp.paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:sp.hw,hl:sp.hl,top:sp.top+0.02,cruise:MR(10,14),wheels:sp.wheels.filter(Boolean),superW:true,tail:sp.tail,red:null,blue:null,
-   stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||48,dir:0,road:0,next:0,owned:!!opt.owned,type,name:opt.name||'Vento GT'};cars.push(car);return car;}
+ const police=mode==='police';const type=opt.type||(police?'super':Math.random()<0.12?'super':pick(['sedan','sedan','sedan','suv','suv','hatch','sport','conv','conv','jeep','pickup']));const t=CAR_TYPES[type];
+ if(type==='super'){const color=opt.color||(police?'#f4f4f4':pick(['#b0101a','#f2c230','#0d0d0f','#ffffff','#1e6fd9','#ff6a00','#3ec6c1','#ff7eb6']));const sp=buildSuper(color,opt);const g=new THREE.Group(),body=new THREE.Group();g.add(body);body.add(sp.rot);g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
+  const hp=opt.hp||6;const car={g,body,bodyMat:sp.paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:sp.hw,hl:sp.hl,top:sp.top+0.02,cruise:MR(10,14),wheels:sp.wheels.filter(Boolean),superW:true,tail:sp.tail,red:null,blue:null,police,
+   stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||48,dir:0,road:0,next:0,owned:!!opt.owned,type,name:police?'Police Interceptor':opt.name||'Vento GT'};
+  if(police){car.maxSpd=opt.spd||70;car.cruise=MR(12,16);car.health=car.maxHealth=opt.hp||9;const red=new THREE.MeshBasicMaterial({color:'#ff2020'}),blue=new THREE.MeshBasicMaterial({color:'#2050ff'});car.red=red;car.blue=blue;const ty=sp.top;
+   addM(body,new THREE.BoxGeometry(0.9,0.05,0.26),CM.black,0,ty+0.0,-0.35,false);addM(body,new THREE.BoxGeometry(0.42,0.08,0.22),red,-0.22,ty+0.06,-0.35,false);addM(body,new THREE.BoxGeometry(0.42,0.08,0.22),blue,0.22,ty+0.06,-0.35,false);
+   if(!POL_TEX)POL_TEX=polTex();for(const s2 of[-1,1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(1.7,0.42),new THREE.MeshBasicMaterial({map:POL_TEX,transparent:true,depthWrite:false}));pl.position.set(s2*(sp.hw+0.02),0.62,-0.1);pl.rotation.y=s2*Math.PI/2;body.add(pl);}}
+  cars.push(car);return car;}
  const taxi=!police&&!opt.color&&type==='sedan'&&Math.random()<0.15;
  const color=opt.color||(police?'#f4f4f4':taxi?'#f2c230':type==='conv'||type==='jeep'?pick(MIAMI_COLS):pick(Math.random()<0.5?MIAMI_COLS:CAR_COLS));
  const metal=['#f2f2f2','#f4f1e8','#e4d3b0','#ffd6e8','#f4f4f4'].includes(color)?0.15:0.6;
@@ -1073,7 +1082,7 @@ function makeCar(x,z,h,mode,opt={}){
  if(police){red=new THREE.MeshBasicMaterial({color:'#ff2020'});blue=new THREE.MeshBasicMaterial({color:'#2050ff'});
   addM(body,new THREE.BoxGeometry(1.25,0.07,0.32),CM.black,0,t.roof+0.04,-0.1,false);addM(body,new THREE.BoxGeometry(0.58,0.12,0.28),red,-0.31,t.roof+0.12,-0.1,false);addM(body,new THREE.BoxGeometry(0.58,0.12,0.28),blue,0.31,t.roof+0.12,-0.1,false);
   addM(body,new THREE.BoxGeometry(t.w*0.7,0.2,0.08),CM.black,0,S.B(S.L-0.2)+0.22,S.L+0.06,false);
-  if(!POL_TEX)POL_TEX=polTex();for(const s of [-1,1]){const xs=S.sideX(0,b-0.33)+0.025;const p=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.45),new THREE.MeshBasicMaterial({map:POL_TEX,transparent:true}));p.position.set(s*xs,b-0.33,0);p.rotation.y=s*Math.PI/2;body.add(p);
+  if(!POL_TEX)POL_TEX=polTex();if(!SWAT_DEC)SWAT_DEC=polTex('SWAT','#f2f2f2');for(const s of [-1,1]){const xs=S.sideX(0,b-0.33)+0.025;const p=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.45),new THREE.MeshBasicMaterial({map:t.armored?SWAT_DEC:POL_TEX,transparent:true}));p.position.set(s*xs,b-0.33,0);p.rotation.y=s*Math.PI/2;body.add(p);
    addM(body,new THREE.BoxGeometry(0.02,0.09,t.len-1.4),mat('#1f3a8a'),s*(S.sideX(0,b-0.6)+0.02),b-0.6,0,false);}}
  if(taxi){addM(body,new THREE.BoxGeometry(0.7,0.2,0.26),basic('#fff3a0'),0,t.roof+0.12,-0.1,false);addM(body,new THREE.BoxGeometry(0.02,0.08,t.len-1.4),CM.black,S.sideX(0,b-0.35)+0.015,b-0.35,0,false);addM(body,new THREE.BoxGeometry(0.02,0.08,t.len-1.4),CM.black,-S.sideX(0,b-0.35)-0.015,b-0.35,0,false);}
  if(type==='van'&&!police){addM(body,new THREE.ConeGeometry(0.3,0.7,10),mat('#f9e2ae'),0,t.roof+0.4,-0.6);addM(body,new THREE.SphereGeometry(0.3,10,8),mat('#ff9ac8'),0,t.roof+0.8,-0.6);}
@@ -1128,7 +1137,7 @@ function updPolice(c,dt){
  if(c.stun>0){c.stun-=dt;c.speed*=Math.pow(0.1,dt);c.h+=dt*4*(c.spin||0);}
  else if(c.reverse>0){c.reverse-=dt;c.speed+=clamp(-7-c.speed,-20*dt,20*dt);c.h-=Math.sign(angDiff(Math.atan2(dx,dz),c.h))*1.4*dt;}
  else{const diff=angDiff(Math.atan2(dx,dz),c.h);c.h+=clamp(diff,-2.4*dt,2.4*dt)*(c.speed>=0?1:-1);
-  let ts=(!P.car&&dist<11)?0:(c.swat?30:34);if(Math.abs(diff)>1.3)ts=11;if(P.gumT>0)ts=6;c.speed+=clamp(ts-c.speed,-28*dt,17*dt);
+  let ts=(!P.car&&dist<11)?0:(c.swat?30:40);if(Math.abs(diff)>1.3)ts=11;if(P.gumT>0)ts=6;c.speed+=clamp(ts-c.speed,-28*dt,17*dt);
   if(Math.abs(c.speed)<1.5&&dist>12){c.stuckT+=dt;if(c.stuckT>1.2){c.reverse=1.1;c.stuckT=0;}}else c.stuckT=0;}
  c.x+=Math.sin(c.h)*c.speed*dt;c.z+=Math.cos(c.h)*c.speed*dt;
  if(carVsWorld(c))c.speed*=0.6;
@@ -1260,7 +1269,7 @@ function updWanted(dt){
  if(spawnT<=0){spawnT=1.6;
   const pcs=cars.filter(c=>c.mode==='police'&&c!==P.car);const wantCars=stars()>=2?Math.min(4,stars()-1):0;
   if(P.car&&P.car.boat){if(pcs.filter(c=>c.boat).length<Math.max(1,wantCars)){for(let t=0;t<30;t++){const a=Math.random()*6.28,d=MR(55,85),x=px+Math.cos(a)*d,z=pz+Math.sin(a)*d;if(inWater(x,z)&&x<CITY+320&&z>-30&&z<CITY+30){makeBoat(x,z,Math.atan2(px-x,pz-z),'police','police');break;}}}}
-  else if(stars()>=4&&pcs.filter(c=>c.swat).length<(stars()>=5?2:1)){const p=roadPointAway(55,95);if(p){const v=makeCar(p.x,p.z,Math.atan2(px-p.x,pz-p.z),'police',{type:'van',color:'#1e232b',hp:14});v.swat=true;v.name='SWAT Van';v.maxSpd=26;}}
+  else if(stars()>=4&&pcs.filter(c=>c.swat).length<(stars()>=5?2:1)){const p=roadPointAway(55,95);if(p){const v=makeCar(p.x,p.z,Math.atan2(px-p.x,pz-p.z),'police',{type:'armored',color:'#1e232b',hp:14});v.swat=true;v.name='SWAT Truck';v.maxSpd=26;}}
   else if(pcs.length<wantCars){const p=roadPointAway(55,95);if(p)makeCar(p.x,p.z,Math.atan2(px-p.x,pz-p.z),'police');}
   else if(!P.car&&officers.length<maxOfficers()&&pcs.length===0){const p=roadPointAway(30,48);if(p)spawnOfficer(p.x,p.z);}}
  for(const o of officers)if(Math.hypot(o.x-px,o.z-pz)>140){o.x=px+MR(-30,30);o.z=pz+MR(-30,30);}}
@@ -1670,7 +1679,7 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='apply'){iv={job:id,q:0};}
  if(a==='ans'){const J=JOBS[iv.job];if(+id===J.qs[iv.q][2]){iv.q++;iv.hint=null;if(iv.q>=J.qs.length&&!J.fitness){hired(iv.job);}else if(iv.q>=J.qs.length)sub('👍 Great answers! Now the fitness test');}else iv.hint='Not quite! Think about what a hero would do. Try again!';}
  if(a==='sprint'){iv.taps=(iv.taps||0)+1;if(iv.taps>=10){iv.fit=true;hired(iv.job);}}
- if(a==='polup'){const lv=S.polUp||0;if(lv<3&&pay([600,1500,3000][lv])){S.polUp=lv+1;for(const c of cars)if(c.jobCar)c.maxSpd=(c.polMoto?38:c.name==='SWAT Van'?36:40)+polSpd();save();sub(`🏁 Pursuit Speed level ${S.polUp}! Top speed +${polSpd()}`);}renderStore();return;}
+ if(a==='polup'){const lv=S.polUp||0;if(lv<3&&pay([600,1500,3000][lv])){S.polUp=lv+1;for(const c of cars)if(c.jobCar)c.maxSpd=(c.polMoto?56:c.name==='SWAT Truck'?40:72)+polSpd();save();sub(`🏁 Pursuit Speed level ${S.polUp}! Top speed +${polSpd()}`);}renderStore();return;}
  if(a==='duty'){S.duty=!S.duty;if(S.duty){heat=0;clearCops();missionT=3;}sub(S.duty?'🟢 On duty! Wait for a call from dispatch.':'⚪ Off duty. Enjoy Miami!');rebuildPlayer();}
  if(a==='quit'){S.job='citizen';S.duty=false;sub('🧍 You quit. Back to being a citizen.');rebuildPlayer();}
  if(a==='jobcar'){spawnJobCar(s);}
@@ -1824,7 +1833,7 @@ const BIKES=[
 ];
 const BKI={};BIKES.forEach(b=>BKI[b.id]=b);BKI.polmoto={id:'polmoto',name:'Police Motorcycle',kind:'dirt',spd:38,jump:5,col:'#f4f4f4'};
 function polSpd(){return 6*(S.polUp||0);}
-function makePoliceMoto(x,z,h){const c=makeBike(x,z,h,'parked','polmoto',{owned:true});c.maxSpd=38+polSpd();c.polMoto=true;c.jobCar=true;
+function makePoliceMoto(x,z,h){const c=makeBike(x,z,h,'parked','polmoto',{owned:true});c.maxSpd=56+polSpd();c.polMoto=true;c.jobCar=true;
  const red=new THREE.MeshBasicMaterial({color:'#ff2020'}),blue=new THREE.MeshBasicMaterial({color:'#2050ff'});c.red=red;c.blue=blue;
  addM(c.body,new THREE.BoxGeometry(0.1,0.08,0.08),red,-0.13,1.12,-0.62,false);addM(c.body,new THREE.BoxGeometry(0.1,0.08,0.08),blue,0.13,1.12,-0.62,false);addM(c.body,new THREE.BoxGeometry(0.12,0.06,0.06),red,-0.1,0.95,0.72,false);addM(c.body,new THREE.BoxGeometry(0.12,0.06,0.06),blue,0.1,0.95,0.72,false);
  const ws=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.32,0.02),new THREE.MeshPhysicalMaterial({color:'#bcd4e6',transparent:true,opacity:0.4,roughness:0.05}));ws.position.set(0,1.28,0.62);ws.rotation.x=-0.35;c.body.add(ws);
