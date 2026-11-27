@@ -714,6 +714,7 @@ function careerCards(jobs){let h='';
   return h;}
  for(const j of jobs){const J=JOBS[j];const mine=S.job===j;h+=card(J.icon,J.name+(mine?` · ${J.ranks[rankOf(j)]}`:''),mine?`${S.duty?'🟢 On duty':'⚪ Off duty'} · missions done: ${S.jobXp[j]||0} · pay $${Math.round(J.pay*(1+0.25*rankOf(j)))} per mission`:`Easy interview, then you're hired! Pay $${J.pay}+ per mission.`,
   mine?`<button class="btn sm ${S.duty?'':'pink'}" data-act="duty">${S.duty?'Go off duty':'Go on duty'}</button>`:`<button class="btn sm pink" data-act="apply:${j}">Apply</button>`);}
+ if(S.job==='police'||S.job==='swat'){const lv=S.polUp||0,cost=[600,1500,3000][lv];h+=card('🏁',`Pursuit Speed Upgrade · level ${lv}/3`,lv<3?`+6 top speed for your police cruiser, SWAT van and police motorcycle. Next: $${cost}`:'Maxed out! Your rides are the fastest on the force.',lv<3?`<button class="btn sm pink" data-act="polup">Upgrade $${cost}</button>`:'');}
  if(S.job&&S.job!=='citizen'){h+=card('🧍','Quit and be a citizen','Free roam, mischief and Golden Stars',`<button class="btn sm" data-act="quit">Quit job</button>`);}
  if(onDuty()){const v=S.job==='fire'?'fire truck':S.job==='medic'?'ambulance':S.job==='swat'?'SWAT van':'patrol car';h+=card('🚘','Get your '+v,'Parked right outside',`<button class="btn sm" data-act="jobcar">Get it</button>`);}
  return h;}
@@ -725,7 +726,8 @@ function makeAmbulance(x,z,h){const c=makeCar(x,z,h,'parked',{type:'van',color:'
  c.red=new THREE.MeshBasicMaterial({color:'#ff2020'});c.blue=new THREE.MeshBasicMaterial({color:'#ffffff'});addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.red,-0.4,2.62,1.6,false);addM(c.body,new THREE.BoxGeometry(0.6,0.15,0.3),c.blue,0.4,2.62,1.6,false);return c;}
 function spawnJobCar(s){const x=s.x+Math.sin(0)*0,z=s.z;let c;
  if(S.job==='fire')c=makeFireTruck(x+3,z+3,0,'parked');else if(S.job==='medic')c=makeAmbulance(x+3,z+3,0);
- else{c=makeCar(x+3,z+3,0,'police',S.job==='swat'?{type:'van',color:'#1e232b',hp:14}:{});c.mode='parked';c.jobCar=true;if(S.job==='swat')c.name='SWAT Van';}
+ else{c=makeCar(x+3,z+3,0,'police',S.job==='swat'?{type:'van',color:'#1e232b',hp:14,spd:36+polSpd()}:{spd:40+polSpd()});c.mode='parked';c.jobCar=true;if(S.job==='swat')c.name='SWAT Van';
+  if(S.job==='police'){const m=makePoliceMoto(x-2,z+3,0);for(let t=0;t<15;t++)carVsWorld(m);}}
  c.owned=true;for(let t=0;t<15;t++)carVsWorld(c);sub('🚘 Your vehicle is outside!');P.wp={x:c.x,z:c.z,name:c.name};}
 // ---- missions
 function randRoadSpot(minD,maxD){for(let t=0;t<60;t++){const i=Math.floor(Math.random()*(NB+1)),along=MR(8,CITY-8);const xr=Math.random()<0.5;const x=xr?i*CELL+MR(-3,3):along,z=xr?along:i*CELL+MR(-3,3);const d=Math.hypot(x-P.x,z-P.z);if(d>minD&&d<maxD)return{x,z};}return{x:P.x+40,z:P.z};}
@@ -1081,7 +1083,7 @@ function makeCar(x,z,h,mode,opt={}){
  g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
  const hp=opt.hp||(police?7:4);
  const car={g,body,bodyMat:paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:t.w/2,hl:S.L,top:(t.open?(t.jeep?t.roof:b+0.12):t.roof)+0.03,cruise:MR(8,12),wheels,red,blue,tail,
-  stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||28,dir:0,road:0,next:0,owned:!!opt.owned,type,name:police?'Police Cruiser':taxi?'Miami Taxi':opt.name||t.name};
+  stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||(police?40:28),dir:0,road:0,next:0,owned:!!opt.owned,type,name:police?'Police Cruiser':taxi?'Miami Taxi':opt.name||t.name};
  cars.push(car);return car;}
 function damageCar(c,amt,byPlayer){if(c.mode==='wrecked')return;if(c===P.car&&S.ups.armor)amt*=0.5;c.health-=amt;const f=Math.max(0,c.health/c.maxHealth);
  c.body.scale.y=0.78+0.22*f;c.body.rotation.z=(1-f)*0.05;c.bodyMat.color.copy(c.base).lerp(grayC,(1-f)*0.5);c.bodyMat.roughness=0.32+(1-f)*0.5;burst(c.x,1.2,c.z,'#cfcfcf',6,4,0.6);
@@ -1126,7 +1128,7 @@ function updPolice(c,dt){
  if(c.stun>0){c.stun-=dt;c.speed*=Math.pow(0.1,dt);c.h+=dt*4*(c.spin||0);}
  else if(c.reverse>0){c.reverse-=dt;c.speed+=clamp(-7-c.speed,-20*dt,20*dt);c.h-=Math.sign(angDiff(Math.atan2(dx,dz),c.h))*1.4*dt;}
  else{const diff=angDiff(Math.atan2(dx,dz),c.h);c.h+=clamp(diff,-2.4*dt,2.4*dt)*(c.speed>=0?1:-1);
-  let ts=(!P.car&&dist<11)?0:24;if(Math.abs(diff)>1.3)ts=9;if(P.gumT>0)ts=6;c.speed+=clamp(ts-c.speed,-25*dt,12*dt);
+  let ts=(!P.car&&dist<11)?0:(c.swat?30:34);if(Math.abs(diff)>1.3)ts=11;if(P.gumT>0)ts=6;c.speed+=clamp(ts-c.speed,-28*dt,17*dt);
   if(Math.abs(c.speed)<1.5&&dist>12){c.stuckT+=dt;if(c.stuckT>1.2){c.reverse=1.1;c.stuckT=0;}}else c.stuckT=0;}
  c.x+=Math.sin(c.h)*c.speed*dt;c.z+=Math.cos(c.h)*c.speed*dt;
  if(carVsWorld(c))c.speed*=0.6;
@@ -1665,6 +1667,7 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='apply'){iv={job:id,q:0};}
  if(a==='ans'){const J=JOBS[iv.job];if(+id===J.qs[iv.q][2]){iv.q++;iv.hint=null;if(iv.q>=J.qs.length&&!J.fitness){hired(iv.job);}else if(iv.q>=J.qs.length)sub('👍 Great answers! Now the fitness test');}else iv.hint='Not quite! Think about what a hero would do. Try again!';}
  if(a==='sprint'){iv.taps=(iv.taps||0)+1;if(iv.taps>=10){iv.fit=true;hired(iv.job);}}
+ if(a==='polup'){const lv=S.polUp||0;if(lv<3&&pay([600,1500,3000][lv])){S.polUp=lv+1;for(const c of cars)if(c.jobCar)c.maxSpd=(c.polMoto?38:c.name==='SWAT Van'?36:40)+polSpd();save();sub(`🏁 Pursuit Speed level ${S.polUp}! Top speed +${polSpd()}`);}renderStore();return;}
  if(a==='duty'){S.duty=!S.duty;if(S.duty){heat=0;clearCops();missionT=3;}sub(S.duty?'🟢 On duty! Wait for a call from dispatch.':'⚪ Off duty. Enjoy Miami!');rebuildPlayer();}
  if(a==='quit'){S.job='citizen';S.duty=false;sub('🧍 You quit. Back to being a citizen.');rebuildPlayer();}
  if(a==='jobcar'){spawnJobCar(s);}
@@ -1815,7 +1818,14 @@ const BIKES=[
  {id:'bee',name:'Storm Bee',icon:'🏍️',desc:'Electric dirt bike (Surron-style). Wheelies + jumps!',cost:6000,kind:'dirt',spd:25,jump:6.5,col:'#1a1a1a'},
  {id:'stormx',name:'Storm X Ultra',icon:'🏍️',desc:'The beast. Huge jumps, top speed 30',cost:15000,kind:'dirt',spd:31,jump:8.5,col:'#ff6a00'},
 ];
-const BKI={};BIKES.forEach(b=>BKI[b.id]=b);
+const BKI={};BIKES.forEach(b=>BKI[b.id]=b);BKI.polmoto={id:'polmoto',name:'Police Motorcycle',kind:'dirt',spd:38,jump:5,col:'#f4f4f4'};
+function polSpd(){return 6*(S.polUp||0);}
+function makePoliceMoto(x,z,h){const c=makeBike(x,z,h,'parked','polmoto',{owned:true});c.maxSpd=38+polSpd();c.polMoto=true;c.jobCar=true;
+ const red=new THREE.MeshBasicMaterial({color:'#ff2020'}),blue=new THREE.MeshBasicMaterial({color:'#2050ff'});c.red=red;c.blue=blue;
+ addM(c.body,new THREE.BoxGeometry(0.1,0.08,0.08),red,-0.13,1.12,-0.62,false);addM(c.body,new THREE.BoxGeometry(0.1,0.08,0.08),blue,0.13,1.12,-0.62,false);addM(c.body,new THREE.BoxGeometry(0.12,0.06,0.06),red,-0.1,0.95,0.72,false);addM(c.body,new THREE.BoxGeometry(0.12,0.06,0.06),blue,0.1,0.95,0.72,false);
+ const ws=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.32,0.02),new THREE.MeshPhysicalMaterial({color:'#bcd4e6',transparent:true,opacity:0.4,roughness:0.05}));ws.position.set(0,1.28,0.62);ws.rotation.x=-0.35;c.body.add(ws);
+ for(const sx of[-1,1]){addM(c.body,new THREE.BoxGeometry(0.2,0.3,0.42),mat('#f4f4f4',{roughness:0.35}),sx*0.27,0.72,-0.45);addM(c.body,new THREE.BoxGeometry(0.205,0.06,0.425),mat('#1f3a8a'),sx*0.27,0.72,-0.45,false);}
+ addM(c.body,new THREE.BoxGeometry(0.34,0.18,0.3),mat('#1b1d22'),0,0.98,-0.62);return c;}
 const bikeStations=[];
 function bikeWheel(r,t,knobby){const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.TorusGeometry(r,t,8,24).rotateY(Math.PI/2),mat('#151515',{roughness:0.9})));
  const rim=new THREE.Mesh(new THREE.CylinderGeometry(r*0.75,r*0.75,0.03,16).rotateZ(Math.PI/2),new THREE.MeshStandardMaterial({color:'#9aa0a8',metalness:0.8,roughness:0.3,transparent:true,opacity:knobby?1:0.35}));g.add(rim);
@@ -2111,7 +2121,7 @@ function update(dt){
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*(wheelOpen?0.2:1);last=now;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.__dbg={cam:(y,p)=>{camYaw=y;camPitch=p;},spawnOfficer,makeHuman,rebuild:()=>rebuildPlayer(),S,get model(){return model;}};
-window.__game={makeCar,carGeos,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
+window.__game={makeCar,carGeos,makePoliceMoto,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
 </script>
 </body>
 </html>
