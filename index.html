@@ -97,7 +97,7 @@
 <div id="radarWrap"><canvas id="radar" width="440" height="300"></canvas><div id="bar"><i></i></div></div>
 <div class="hud gta" id="area"></div>
 <div id="subs"></div><div id="flashFx" style="position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 1.4s ease-out;z-index:7"></div>
-<button id="radioBtn" title="Radio (R)">📻</button><div id="radio"></div>
+<button id="heliDown" style="position:fixed;right:16px;bottom:calc(270px + env(safe-area-inset-bottom));width:64px;height:64px;border-radius:50%;border:2px solid #fff8;background:#000b;color:#fff;font-size:26px;display:none;z-index:6">⬇</button><button id="radioBtn" title="Radio (R)">📻</button><div id="radio"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="btns">
   <button id="bJump">⤒</button>
@@ -1586,6 +1586,8 @@ function enterCar(c){if(aerial&&aerial.c===c)lowerAerial();if(c.fire&&c.mode!=='
 function exitCar(){const c=P.car;if(!c)return;if(c.fire&&Math.abs(c.speed)<3)setTimeout(()=>raiseAerial(c),50);let land=null;if(c.boat){land=isLandNear(c.x,c.z);if(!land&&c.health>0){sub('🌊 Drive closer to land or a dock to get out');return;}}P.car=null;if(c.bike&&c.rental)sub(`🛴 Ride ended. Total: $${rentCost}`);if(c.mode==='player')c.mode=c.health>0?'parked':'wrecked';c.speed=0;
  const rx=Math.cos(c.h),rz=-Math.sin(c.h);P.x=c.x+rx*(c.hw+1.1);P.z=c.z+rz*(c.hw+1.1);P.y=(c.ay||0)+0.3;if(land){P.x=land.x;P.z=land.z;P.y=0.9;}P.vy=0;P.onGround=false;model.g.visible=true;P.airMax=P.y;}
 function doAction(){
+ if(fly){leaveHeli();return;}
+ if(!P.car){const hh=nearHeli();if(hh){boardHeli(hh);return;}}
  if(P.car){const sp=nearestStore(5,true);if(sp&&Math.abs(P.car.speed)<3){openStore(sp);return;}exitCar();return;}
  {const k=nearDriverWindow();if(k){openTalk(k,true);return;}}
  if(onDuty()&&(S.job==='police'||S.job==='swat')){const s0=nearestStore(3.2),c0=nearestCar(3.6),p0=nearCitizen();if(p0&&!s0&&!c0){openTalk(p0,false);return;}}
@@ -1599,6 +1601,7 @@ function updPrompt(){let t='';const K=isTouch?'Tap 🚪':'Press <b>E</b>';
   else if(c)t=c.rental&&!c.owned?`${K} to rent the <b>ZIP e-bike</b> ($5 + $2/30s)`:`${K} to ${c.mode==='traffic'||c.mode==='police'?'borrow':c.bike?'ride':'drive'} the <b>${c.name}</b>`;}
  if(!t&&!P.car){if(P.climb)t='🪜 Climbing: up / down to move, jump to let go';else if(nearLadder())t='🪜 Walk into the ladder to climb';}if(!P.car){const k=nearDriverWindow();if(k)t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to talk to the driver`;else if(!t&&onDuty()&&(S.job==='police'||S.job==='swat')&&nearCitizen())t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to talk to this citizen`;}
  else if(policeCar(P.car)&&onDuty()&&(S.job==='police'||S.job==='swat')&&findPullable())t=`${isTouch?'Tap 🎯':'Press <b>F</b>'} to pull over the car ahead`;
+ if(fly)t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to land & get out`;else if(!P.car&&nearHeli()){const hh=nearHeli();t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to fly ${hh.police?'Police Air 1':S.heliOwned?'your helicopter':'the helicopter ($'+HELI_COST+')'}`;}
  promptText=t;$('bAct').textContent=P.car?'⬇️':(t?'🚪':'·');}
 
 // ---------------------------------------------------------------- stores
@@ -1736,7 +1739,8 @@ function rayHit(ox,oy,oz,dx,dy,dz,len){let best=1;const mx=ox+dx*len/2,mz=oz+dz*
   if(ok&&t0<best&&s.maxY>0.3&&(s.maxX-s.minX)>0.5)best=t0;}return best;}
 function updCamera(dt){
  let tx,ty,tz,dist;
- if(P.car){const c=P.car;tx=c.x;ty=(c.ay||0)+(c.fire?3.2:0)+(c.fire?0:c.type==='boat_yacht'?4:1.7);tz=c.z;dist=c.fire?15:c.type==='boat_yacht'?26:c.type==='van'?11:9.5;if(clock-drag.t>1.2&&Math.abs(c.speed)>1.5)camYaw=lerpAngle(camYaw,c.speed>=0?c.h:c.h+Math.PI,Math.min(1,dt*2.5));}
+ if(fly){tx=fly.x;ty=fly.y+2.4;tz=fly.z;dist=16;}
+ else if(P.car){const c=P.car;tx=c.x;ty=(c.ay||0)+(c.fire?3.2:0)+(c.fire?0:c.type==='boat_yacht'?4:1.7);tz=c.z;dist=c.fire?15:c.type==='boat_yacht'?26:c.type==='van'?11:9.5;if(clock-drag.t>1.2&&Math.abs(c.speed)>1.5)camYaw=lerpAngle(camYaw,c.speed>=0?c.h:c.h+Math.PI,Math.min(1,dt*2.5));}
  else{tx=P.x;ty=P.y+1.6;tz=P.z;dist=5.8;if(equip&&aimT>0){tx+=-Math.cos(camYaw)*0.6;tz+=Math.sin(camYaw)*0.6;dist=4.4;}}
  if(window.__camDist){dist=window.__camDist;ty-=window.__camDrop||0;}
  if(state==='title'){tx=CITY+10;ty=8;tz=CITY/2;dist=34;}
@@ -1937,7 +1941,7 @@ function crackle(){try{AC=AC||new (window.AudioContext||window.webkitAudioContex
  const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=1250;g.gain.value=0.05;g.gain.setTargetAtTime(0,AC.currentTime+0.06,0.02);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+0.15);}catch(e){}}
 function radioMsg(who,text,ch){if(!S.job||S.job==='citizen')return;ch=ch||'job';const L=radioLog[ch];L.push({who,text});if(L.length>30)L.shift();crackle();$('radioBtn').classList.add('ping');setTimeout(()=>$('radioBtn').classList.remove('ping'),900);
  if(!radioOpen&&who!=='You')sub('📻 '+who+': '+text);renderRadio();}
-window.radioMsg=radioMsg;window.__allies=allies;
+window.radioMsg=radioMsg;setTimeout(()=>{const hb=$('heliDown');if(hb){const on=e=>{e.preventDefault();e.stopPropagation();heliDownBtn=true;},off=e=>{heliDownBtn=false;};hb.addEventListener('pointerdown',on);hb.addEventListener('pointerup',off);hb.addEventListener('pointerleave',off);hb.addEventListener('pointercancel',off);}},0);window.__allies=allies;
 setTimeout(()=>{const b=$('radioBtn');if(b){b.onclick=e=>{e.stopPropagation();toggleRadio();};b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});}},0);
 function renderRadio(){const el=$('radio');if(!radioOpen){el.style.display='none';return;}el.style.display='flex';const J=S.job;
  const L=radioLog[radioCh];el.innerHTML=`<div class="rtop"><b>📻 RADIO</b><span class="rch ${radioCh==='job'?'on':''}" data-r="ch:job">${CH[J]||'Job'}</span><span class="rch ${radioCh==='all'?'on':''}" data-r="ch:all">${CH.all}</span><span class="rch" data-r="close">✕</span></div>
@@ -2071,11 +2075,72 @@ function buildHideout(s){const g=new THREE.Group();const W2=7,D2=5,H2=3.4;const 
  return{g,sol,door:{m:pivot,hp:3,x:s.x+nx*(D2/2+0.9),z:s.z+nz*(D2/2+0.9),nx,nz,broken:false}};}
 function clearHideout(m){if(!m||!m.shed)return;const sh=m.shed;setTimeout(()=>{scene.remove(sh.g);removeSolid(sh.sol);},15000);m.shed=null;}
 
+// ================= FLYABLE HELICOPTERS
+const helis=[];let fly=null;const HELI_COST=6000;
+function heliTextTex(text,col,bg){const [c,x]=cvs(256,64);x.clearRect(0,0,256,64);if(bg){x.fillStyle=bg;x.fillRect(0,0,256,64);}let fs=40;x.font=`bold ${fs}px Arial Black, Arial`;while(x.measureText(text).width>240&&fs>14){fs-=2;x.font=`bold ${fs}px Arial Black, Arial`;}x.fillStyle=col;x.textAlign='center';x.textBaseline='middle';x.fillText(text,128,34);return toTex(c,false);}
+function makeHeliModel(police){const g=new THREE.Group();const col=police?'#f4f4f4':'#ff7eb6',acc=police?'#1f3a8a':'#3ec6c1';
+ const paint=new THREE.MeshPhysicalMaterial({color:col,metalness:0.35,roughness:0.25,clearcoat:1,clearcoatRoughness:0.04}),accM=new THREE.MeshPhysicalMaterial({color:acc,metalness:0.4,roughness:0.3,clearcoat:1}),dark=mat('#1b1d22',{roughness:0.5}),metal=mat('#9aa0a6',{metalness:0.9,roughness:0.3});
+ const add=(geo,m,x,y,z,rx=0,ry=0,rz=0,parent=g)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;parent.add(o);return o;};
+ const fus=add(new THREE.SphereGeometry(1.25,28,18),paint,0,1.95,0.2);fus.scale.set(0.95,0.92,1.75);
+ const belly=add(new THREE.SphereGeometry(1.26,28,18,0,Math.PI*2,Math.PI*0.62,Math.PI*0.38),accM,0,1.95,0.2);belly.scale.set(0.96,0.93,1.76);
+ const gl=add(new THREE.SphereGeometry(1.0,24,16,-Math.PI*0.42,Math.PI*0.84,Math.PI*0.18,Math.PI*0.5),carGlass,0,2.05,1.15);gl.scale.set(1.02,1.0,1.25);
+ add(new THREE.BoxGeometry(0.06,0.7,0.9),new THREE.MeshPhysicalMaterial({color:'#0e1620',roughness:0.05,clearcoat:1}),1.12,2.15,0.3);add(new THREE.BoxGeometry(0.06,0.7,0.9),new THREE.MeshPhysicalMaterial({color:'#0e1620',roughness:0.05,clearcoat:1}),-1.12,2.15,0.3);
+ add(new THREE.CylinderGeometry(0.16,0.42,4.6,14).rotateX(Math.PI/2),paint,0,2.25,-3.6);
+ add(new THREE.BoxGeometry(0.1,1.3,0.9),accM,0,2.85,-5.7,-0.35);add(new THREE.BoxGeometry(1.6,0.07,0.45),accM,0,2.3,-5.2);
+ add(new THREE.BoxGeometry(0.9,0.35,1.4),paint,0,3.1,-0.3);
+ for(const s of[-1,1]){add(new THREE.CylinderGeometry(0.06,0.06,3.6,10).rotateX(Math.PI/2),metal,s*1.05,0.06,0.2);add(new THREE.SphereGeometry(0.06,8,6),metal,s*1.05,0.06,2.0);add(new THREE.SphereGeometry(0.06,8,6),metal,s*1.05,0.06,-1.6);
+  for(const zz of[-0.7,1.1])add(new THREE.CylinderGeometry(0.045,0.045,1.0,8),metal,s*0.92,0.55,zz,0,0,s*0.28);}
+ const tag=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.33),new THREE.MeshBasicMaterial({map:heliTextTex(police?'POLICE':'MIAMI',police?'#1f3a8a':'#ffffff'),transparent:true}));
+ for(const s of[-1,1]){const t=tag.clone();t.position.set(s*1.06,2.0,-1.05);t.rotation.y=s*Math.PI/2;g.add(t);}
+ add(new THREE.CylinderGeometry(0.09,0.12,0.45,10),dark,0,3.45,-0.3);
+ const rotor=new THREE.Group();rotor.position.set(0,3.7,-0.3);g.add(rotor);add(new THREE.CylinderGeometry(0.22,0.22,0.12,12),dark,0,0,0,0,0,0,rotor);
+ for(let i=0;i<4;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.04,4.6),dark);b.position.z=2.35;const arm=new THREE.Group();arm.rotation.y=i*Math.PI/2;arm.add(b);rotor.add(arm);}
+ const blur=new THREE.Mesh(new THREE.CircleGeometry(4.9,40),new THREE.MeshBasicMaterial({color:'#222',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));blur.rotation.x=-Math.PI/2;rotor.add(blur);
+ const trotor=new THREE.Group();trotor.position.set(0.14,2.8,-5.95);g.add(trotor);for(let i=0;i<2;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.03,1.2,0.14),dark);b.rotation.x=i*Math.PI/2;trotor.add(b);}
+ const beacon=new THREE.MeshBasicMaterial({color:'#ff2020'});add(new THREE.SphereGeometry(0.09,8,6),beacon,0,3.38,-5.95);
+ let red=null,blue=null,spot=null;if(police){red=new THREE.MeshBasicMaterial({color:'#ff2020'});blue=new THREE.MeshBasicMaterial({color:'#2050ff'});add(new THREE.BoxGeometry(0.3,0.1,0.12),red,-0.35,0.95,1.7);add(new THREE.BoxGeometry(0.3,0.1,0.12),blue,0.35,0.95,1.7);
+  add(new THREE.CylinderGeometry(0.16,0.12,0.3,12).rotateX(Math.PI/2),metal,0.6,1.0,1.4);
+  spot=new THREE.Mesh(new THREE.ConeGeometry(5,1,24,1,true),new THREE.MeshBasicMaterial({color:'#fff6c8',transparent:true,opacity:0.1,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));spot.visible=false;scene.add(spot);}
+ add(new THREE.BoxGeometry(0.5,0.5,0.45),mat('#2a2b30'),0.4,1.55,0.85);add(new THREE.BoxGeometry(0.5,0.5,0.45),mat('#2a2b30'),-0.4,1.55,0.85);
+ return{g,rotor,trotor,blur,beacon,red,blue,spot,paint};}
+function padTexture(police){const [c,x]=cvs(256,256);x.fillStyle='#3a3d42';x.beginPath();x.arc(128,128,128,0,Math.PI*2);x.fill();x.strokeStyle=police?'#5ec8ff':'#ffd23f';x.lineWidth=12;x.beginPath();x.arc(128,128,108,0,Math.PI*2);x.stroke();
+ x.fillStyle='#ffffff';x.font='bold 150px Arial Black, Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('H',128,136);x.font='bold 20px Arial';x.fillStyle=police?'#5ec8ff':'#ffd23f';x.fillText(police?'POLICE AIR':'SKY RASCAL',128,40);return toTex(c,false);}
+function buildHelipad(x,z,police){const pad=new THREE.Mesh(new THREE.CircleGeometry(6,40),new THREE.MeshStandardMaterial({map:padTexture(police),roughness:0.7}));pad.rotation.x=-Math.PI/2;pad.rotation.z=Math.PI/2;pad.position.set(x,0.09,z);pad.receiveShadow=true;scene.add(pad);
+ for(let i=0;i<12;i++){const a=i/12*Math.PI*2;addM(scene,new THREE.SphereGeometry(0.1,8,6),new THREE.MeshStandardMaterial({color:police?'#5ec8ff':'#ffd23f',emissive:police?'#5ec8ff':'#ffd23f',emissiveIntensity:1.5}),x+Math.cos(a)*6.3,0.12,z+Math.sin(a)*6.3,false);}
+ const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.4,1.1),new THREE.MeshBasicMaterial({map:heliTextTex(police?'🚁 POLICE AIR 1':'🚁 SKY RASCAL $'+HELI_COST,police?'#ffffff':'#1b1d22',police?'#1f3a8a':'#ffd23f'),side:THREE.DoubleSide}));sign.position.set(x-7.5,3.2,z);sign.rotation.y=-Math.PI/2;scene.add(sign);
+ addM(scene,new THREE.CylinderGeometry(0.08,0.08,2.7,8),M.pole,x-7.5,1.35,z-1.6);addM(scene,new THREE.CylinderGeometry(0.08,0.08,2.7,8),M.pole,x-7.5,1.35,z+1.6);
+ const m=makeHeliModel(police);const h=Object.assign(m,{x,z,y:0.1,yaw:-Math.PI/2,vx:0,vz:0,vy:0,spin:0,police,pad:{x,z},say:0});m.g.position.set(x,0.1,z);m.g.rotation.y=h.yaw;scene.add(m.g);helis.push(h);return h;}
+function nearHeli(){for(const h of helis){if(h===fly)continue;if(Math.hypot(h.x-P.x,h.z-P.z)<4.5&&Math.abs(h.y-P.y)<3)return h;}return null;}
+function boardHeli(h){if(h.police){if(!(onDuty()&&(S.job==='police'||S.job==='swat'))){sub('🚁 Police Air 1 is for on-duty Police and SWAT only. Visit the Job Center!');return;}}
+ else if(!S.heliOwned){if(S.cash<HELI_COST){sub(`🚁 The Sky Rascal helicopter costs $${HELI_COST}. Keep earning!`);return;}addCash(-HELI_COST);S.heliOwned=true;save();sub('🎉 You bought the SKY RASCAL helicopter!');}
+ fly=h;h.spin=Math.max(h.spin,0.05);model.g.visible=false;P.vx=P.vz=P.vy=0;showArea(h.police?'Police Air 1':'Sky Rascal','🚁 SPACE up · C/Shift down · WASD fly · E land & exit');if(isTouch)$('heliDown').style.display='block';}
+function heliGround(x,z,y){let gy=Math.max(groundAt(x,z),terrainH(x,z));if(inWater(x,z))gy=Math.max(gy,0.6);for(const s of query(x,z,1.6)){if(x>s.minX-1&&x<s.maxX+1&&z>s.minZ-1&&z<s.maxZ+1&&s.maxY<=y+0.6&&s.maxY>gy)gy=s.maxY;}return gy;}
+function heliHits(x,y,z){for(const s of query(x,z,3.2)){if(s.maxY<y+0.4||s.minY>y+3.6)continue;const cx=clamp(x,s.minX,s.maxX),cz=clamp(z,s.minZ,s.maxZ);if(Math.hypot(x-cx,z-cz)<2.3)return true;}return false;}
+let heliDownBtn=false;
+function updFly(dt){const h=fly;const inp=getMove();const up=jumpHeld()?1:(keys.KeyC||keys.ShiftLeft||keys.ShiftRight||heliDownBtn)?-1:0;
+ h.spin=Math.min(1,h.spin+dt*0.8);const gy=heliGround(h.x,h.z,h.y);const grounded=h.y<=gy+0.05;const lift=h.spin>0.6;
+ let tvy=lift?up*11:-4;if(lift&&grounded&&inp.y!==0&&up===0)tvy=5;h.vy+=(tvy-h.vy)*Math.min(1,dt*3);
+ if(lift&&!grounded||up>0&&lift){h.yaw-=inp.x*1.7*dt;const acc=(h.police?26:22);h.vx+=Math.sin(h.yaw)*inp.y*acc*dt;h.vz+=Math.cos(h.yaw)*inp.y*acc*dt;}
+ const dr=Math.exp(-dt*(grounded?6:0.8));h.vx*=dr;h.vz*=dr;const sp=Math.hypot(h.vx,h.vz),mx=(h.police?40:34)+(h.police?polSpd():0);if(sp>mx){h.vx*=mx/sp;h.vz*=mx/sp;}
+ const nx=h.x+h.vx*dt,nz=h.z+h.vz*dt;if(heliHits(nx,h.y,nz)){h.vx*=-0.3;h.vz*=-0.3;shake=Math.max(shake,0.15);}else{h.x=nx;h.z=nz;}
+ h.y+=h.vy*dt;const g2=heliGround(h.x,h.z,h.y);if(h.y<g2){h.y=g2;if(h.vy<-8)shake=Math.max(shake,0.2);h.vy=0;}if(h.y>150){h.y=150;h.vy=Math.min(0,h.vy);}
+ h.x=clamp(h.x,-300,CITY+300);h.z=clamp(h.z,-300,CITY+300);
+ const fwd=(h.vx*Math.sin(h.yaw)+h.vz*Math.cos(h.yaw)),side=(h.vx*Math.cos(h.yaw)-h.vz*Math.sin(h.yaw));
+ h.g.position.set(h.x,h.y,h.z);h.g.rotation.order='YXZ';h.g.rotation.y=h.yaw;h.g.rotation.x+=((grounded?0:clamp(fwd*0.012,-0.3,0.3))-h.g.rotation.x)*Math.min(1,dt*4);h.g.rotation.z+=((grounded?0:clamp(-side*0.02+inp.x*0.18,-0.4,0.4))-h.g.rotation.z)*Math.min(1,dt*4);
+ P.x=h.x;P.z=h.z;P.y=h.y;P.yaw=h.yaw;if(clock-drag.t>1.2&&sp>3)camYaw=lerpAngle(camYaw,h.yaw,Math.min(1,dt*1.8));
+ if(!grounded&&Math.random()<dt*3&&h.y-g2<6)burst(h.x+MR(-3,3),g2+0.2,h.z+MR(-3,3),inWater(h.x,h.z)?'#cfe9ff':'#d8cdb0',2,4,0.5);}
+function updHelis(dt){for(const h of helis){if(h!==fly){if(h.spin>0){h.spin=Math.max(0,h.spin-dt*0.25);}const g2=heliGround(h.x,h.z,h.y);if(h.y>g2){h.y=Math.max(g2,h.y-dt*6);h.g.position.y=h.y;}}
+  h.rotor.rotation.y+=dt*32*h.spin;h.trotor.rotation.x+=dt*45*h.spin;h.blur.material.opacity=h.spin*0.28;h.rotor.children.forEach((c,i)=>{if(i>0&&c.isGroup)c.visible=h.spin<0.85;});
+  h.beacon.color.set(Math.sin(clock*5)>0.6?'#ff2020':'#300000');if(h.red&&h===fly){const on=Math.sin(clock*14)>0;h.red.color.set(on?'#ff2020':'#300000');h.blue.color.set(on?'#000830':'#2050ff');}
+  if(h.spot){h.spot.visible=h===fly&&h.y>8;if(h.spot.visible){const gy=heliGround(h.x,h.z,0);const H=h.y-gy;h.spot.scale.set(1,H,1);h.spot.position.set(h.x,gy+H/2,h.z);}}}}
+function leaveHeli(){const h=fly;const gy=heliGround(h.x,h.z,h.y);if(h.y-gy>2.5){sub('🚁 Fly lower and land first (hold C or Shift to go down)');return;}h.y=gy;h.vx=h.vz=h.vy=0;h.g.position.y=gy;h.g.rotation.x=h.g.rotation.z=0;
+ fly=null;model.g.visible=true;const rx=Math.cos(h.yaw),rz=-Math.sin(h.yaw);P.x=h.x+rx*2.8;P.z=h.z+rz*2.8;P.y=gy+0.2;P.vx=P.vz=P.vy=0;$('heliDown').style.display='none';sub('🚁 Landed!');}
+
 // ---------------------------------------------------------------- spawn world actors
 for(let i=0;i<(isTouch?20:26);i++)spawnTraffic(false);
 for(const p of parkedSpots)makeCar(p.x,p.z,p.h,'parked');
 for(let i=0;i<(isTouch?18:28);i++)spawnPed(0);
-makeBoat(CITY+70,26,Math.PI/2,'parked','jetski');makeBoat(CITY+86,17.5,Math.PI/2,'parked','speed');makeBoat(CITY+100,26.5,Math.PI/2,'parked','jetski',{color:'#ff4fa3'});spawnBeachFolk();buildBikeStations();buildBatches();for(const f of fireSpots)makeFireTruck(f.x,f.z,f.h,'parked');spawnTraffic(true,makeFireTruck);spawnTraffic(true,makeFireTruck);
+makeBoat(CITY+70,26,Math.PI/2,'parked','jetski');makeBoat(CITY+86,17.5,Math.PI/2,'parked','speed');makeBoat(CITY+100,26.5,Math.PI/2,'parked','jetski',{color:'#ff4fa3'});spawnBeachFolk();buildHelipad(CITY+22,CITY/2-26,false);buildHelipad(CITY+22,CITY/2-44,true);buildBikeStations();buildBatches();for(const f of fireSpots)makeFireTruck(f.x,f.z,f.h,'parked');spawnTraffic(true,makeFireTruck);spawnTraffic(true,makeFireTruck);
 newStarSet();
 
 // ---------------------------------------------------------------- main loop
@@ -2087,9 +2152,9 @@ function update(dt){
  if(state==='play'){
   if(edge.act)doAction();if(edge.swap){curG++;updWeapon();}
   if((qHeld&&clock-qT>0.25||swapHeld&&clock-swapT>0.3)&&!wheelOpen)openWheel();
-  fireCD-=dt;aimT=Math.max(0,aimT-dt);if(P.car&&P.car.fire){if(keys.KeyF||btnUse||edge.use)sprayWater(P.car,dt);}else if(P.car&&policeCar(P.car)&&onDuty()&&(S.job==='police'||S.job==='swat')){if(edge.use){const k=findPullable();if(k)startPullover(k);else sub('🚨 No car ahead to pull over. Drive up behind one.');}}else{const w=curWeapon();if(w&&!wheelOpen){const auto=w.type==='auto'||w.type==='cone';if(edge.use)useBuf=0.35;else useBuf-=dt;if((auto&&(keys.KeyF||btnUse)||useBuf>0)&&fireCD<=0){useBuf=0;fire(w,dt);}}else if(edge.use&&!w)sub('🎯 No weapons! Find a BLASTER SHOP (🎯 on the radar)');}
+  fireCD-=dt;aimT=Math.max(0,aimT-dt);if(P.car&&P.car.fire){if(keys.KeyF||btnUse||edge.use)sprayWater(P.car,dt);}else if(P.car&&policeCar(P.car)&&onDuty()&&(S.job==='police'||S.job==='swat')){if(edge.use){const k=findPullable();if(k)startPullover(k);else sub('🚨 No car ahead to pull over. Drive up behind one.');}}else{const w=curWeapon();if(w&&!wheelOpen&&!fly){const auto=w.type==='auto'||w.type==='cone';if(edge.use)useBuf=0.35;else useBuf-=dt;if((auto&&(keys.KeyF||btnUse)||useBuf>0)&&fireCD<=0){useBuf=0;fire(w,dt);}}else if(edge.use&&!w)sub('🎯 No weapons! Find a BLASTER SHOP (🎯 on the radar)');}
   if(P.speedT>0)P.speedT-=dt;if(P.bounceT>0)P.bounceT-=dt;
-  if(P.car){updPlayerCar(P.car,dt);P.x=P.car.x;P.z=P.car.z;P.y=0;updRide(dt);}else updFoot(dt);
+  if(fly)updFly(dt);else if(P.car){updPlayerCar(P.car,dt);P.x=P.car.x;P.z=P.car.z;P.y=0;updRide(dt);}else updFoot(dt);updHelis(dt);
   updPrompt();
  }
  equipUpdate();if(state==='play')placeGun(dt);
@@ -2121,7 +2186,7 @@ function update(dt){
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*(wheelOpen?0.2:1);last=now;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.__dbg={cam:(y,p)=>{camYaw=y;camPitch=p;},spawnOfficer,makeHuman,rebuild:()=>rebuildPlayer(),S,get model(){return model;}};
-window.__game={makeCar,carGeos,makePoliceMoto,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
+window.__game={get fly(){return fly},helis,makeCar,carGeos,makePoliceMoto,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
 </script>
 </body>
 </html>
