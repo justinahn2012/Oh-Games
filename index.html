@@ -104,6 +104,7 @@
   <div class="hint">Run the streets of Miami, from the neon hotels of <b>Ocean Drive</b> to the towers of <b>Brickell</b>, the murals of <b>Wynwood</b> and the cafés of <b>Little Havana</b>.
     Climb buildings, borrow cars and hunt for hidden <b>Golden Stars</b>. Make mischief and the cops come running. Get caught and it's 30 seconds in jail.</div>
   <button class="btn pink" id="playBtn">▶ Play</button>
+  <div class="hint" style="font-size:.7rem;opacity:.5">Supercar model: "Ferrari 458 Italia" by vicent091036 (CC BY 4.0), via three.js examples</div>
   <div class="hint" id="ctrlHint" style="font-size:.85rem;opacity:.7"></div>
 </div>
 
@@ -127,6 +128,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from './lib/GLTFLoader.js';
+import {DRACOLoader} from './lib/DRACOLoader.js';
 import * as SkeletonUtils from './lib/SkeletonUtils.js';
 'use strict';
 // =====================================================================
@@ -148,10 +150,10 @@ if(isTouch)document.body.classList.add('touch');
 // ---------------------------------------------------------------- load character models
 $('playBtn').disabled=true;$('playBtn').textContent='Loading 0%';
 const _prog={};const _upd=()=>{let a=0,b=0;for(const k in _prog){a+=_prog[k][0];b+=_prog[k][1]||1;}$('playBtn').textContent='Loading '+Math.floor(a/Math.max(1,b)*100)+'%';};
-const _gl=new GLTFLoader();
+const _gl=new GLTFLoader();{const dr=new DRACOLoader();dr.setDecoderPath('lib/draco/');_gl.setDRACOLoader(dr);}
 const _load=u=>new Promise((res,rej)=>_gl.load(u,res,e=>{_prog[u]=[e.loaded,e.total];_upd();},rej));
-let GL_MAN,GL_WOMAN,ANIMS;
-try{[GL_MAN,GL_WOMAN,ANIMS]=await Promise.all([_load('models/man.glb'),_load('models/woman.glb'),fetch('models/anims.json').then(r=>r.json())]);}
+let GL_MAN,GL_WOMAN,ANIMS,GL_SUPER;
+try{[GL_MAN,GL_WOMAN,ANIMS,GL_SUPER]=await Promise.all([_load('models/man.glb'),_load('models/woman.glb'),fetch('models/anims.json').then(r=>r.json()),_load('models/supercar.glb')]);}
 catch(e){$('playBtn').textContent='Could not load game files - refresh';throw e;}
 $('playBtn').textContent='▶ Play';$('playBtn').disabled=false;
 
@@ -207,8 +209,13 @@ const CAFE=[
 const RIDES=[
  {id:'van',name:'Ice Cream Van',icon:'🍦',desc:'Plays a jingle. Very sturdy',cost:1500,type:'van',color:'#ffd6e8',spd:24,hp:20},
  {id:'suv',name:'Keystone SUV',icon:'🚙',desc:'Big, tough and comfy',cost:2000,type:'suv',color:'#1a1a1a',spd:30,hp:16},
- {id:'sports',name:'Riptide GT',icon:'🏎️',desc:'Super fast sports car',cost:4000,type:'sport',color:'#d61f3c',spd:40,hp:10},
- {id:'gold',name:'Golden Riptide',icon:'✨',desc:'The fastest, shiniest ride in Miami',cost:50000,type:'sport',color:'#e8c547',spd:48,hp:14},
+ {id:'sports',name:'Riptide GT',icon:'🏎️',desc:'Fast sports car',cost:4000,type:'sport',color:'#d61f3c',spd:40,hp:10},
+ {id:'vento',name:'Vento GT Rosso',icon:'🏎️',desc:'SUPERCAR. V8 thunder, 0-100 in a blink',cost:15000,type:'super',color:'#b0101a',spd:50,hp:12,sup:1},
+ {id:'ventoY',name:'Vento GT Giallo',icon:'🏎️',desc:'SUPERCAR in racing yellow',cost:20000,type:'super',color:'#f2c230',spd:52,hp:12,sup:1},
+ {id:'ventoN',name:'Vento GT Nero',icon:'🏎️',desc:'SUPERCAR, stealth black. Cops hate it',cost:25000,type:'super',color:'#0d0d0f',spd:54,hp:13,sup:1},
+ {id:'ventoB',name:'Vento GT Azzurro',icon:'🏎️',desc:'SUPERCAR in Miami ocean blue',cost:30000,type:'super',color:'#1e6fd9',spd:55,hp:13,sup:1},
+ {id:'ventoC',name:'Vento GT Chrome',icon:'🪩',desc:'Mirror-chrome SUPERCAR. Blinding',cost:60000,type:'super',color:'#d8dde2',spd:58,hp:14,sup:1,chrome:1},
+ {id:'gold',name:'Vento GT Oro',icon:'✨',desc:'Solid-gold SUPERCAR. The fastest ride in Miami',cost:100000,type:'super',color:'#e8c547',spd:62,hp:16,sup:1,gold:1},
 ];
 const STORE_INFO={
  blaster:{name:'BLASTER SHOP',icon:'🎯',wall:'#2a2d36',awn:'#d64550',fg:'#ff5a5a'},
@@ -675,6 +682,7 @@ function carPushBody(c,b,r){const dx=b.x-c.x,dz=b.z-c.z,ch=Math.cos(c.h),sh=Math
 const CAR_TYPES={
  sedan:{name:'Coral Sedan',len:4.6,w:1.84,clr:0.32,belt:1.0,roof:1.45,cab:[-1.25,-0.6,0.5,1.15]},
  suv:{name:'Keystone SUV',len:4.8,w:1.96,clr:0.42,belt:1.2,roof:1.85,cab:[-2.05,-1.85,0.45,1.15]},
+ super:{name:'Vento GT',len:4.6,w:2.0,clr:0.2,belt:0.8,roof:1.2,cab:[0,0,0,0]},
  sport:{name:'Riptide GT',len:4.5,w:1.92,clr:0.26,belt:0.82,roof:1.17,cab:[-1.0,-0.3,0.25,1.0]},
  hatch:{name:'Zippy Hatch',len:4.0,w:1.76,clr:0.3,belt:1.0,roof:1.5,cab:[-1.8,-1.65,0.4,0.95]},
  van:{name:'Ice Cream Van',len:5.2,w:2.0,clr:0.4,belt:1.3,roof:2.5,cab:[-2.5,-2.5,1.4,1.9]},
@@ -692,18 +700,31 @@ const tireGeo=new THREE.CylinderGeometry(0.36,0.36,0.26,20).rotateZ(Math.PI/2),r
 const tireMat=mat('#151515',{roughness:0.9}),rimMat=mat('#c0c4ca',{metalness:0.9,roughness:0.25});
 const carGlass=new THREE.MeshPhysicalMaterial({color:'#101820',metalness:0.9,roughness:0.05,clearcoat:1});
 const grayC=new THREE.Color('#3a3a3a');
+const SUPER=(()=>{const root=GL_SUPER.scene;root.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(root);const size=bb.getSize(new THREE.Vector3()),ctr=bb.getCenter(new THREE.Vector3());
+ const fl=root.getObjectByName('wheel_fl').getWorldPosition(new THREE.Vector3()),rl=root.getObjectByName('wheel_rl').getWorldPosition(new THREE.Vector3());
+ const alongX=size.x>size.z;return{root,bb,size,ctr,flip:alongX?(fl.x<rl.x):(fl.z<rl.z),alongX};})();
+function buildSuper(color,o){const inner=SUPER.root.clone(true);const paint=new THREE.MeshPhysicalMaterial({color,metalness:o.chrome?1:o.gold?0.95:0.6,roughness:o.chrome?0.04:o.gold?0.15:0.3,clearcoat:1,clearcoatRoughness:0.03});
+ let tail=null;inner.traverse(m=>{if(!m.isMesh)return;m.castShadow=true;const n=m.material.name;if(n==='Body_Color')m.material=paint;else if(n==='Taillight_Glass'){if(!tail)tail=new THREE.MeshStandardMaterial({color:'#5a0808',emissive:'#ff1a1a',emissiveIntensity:0.4});m.material=tail;}});
+ const wrap=new THREE.Group();wrap.add(inner);inner.position.set(-SUPER.ctr.x,-SUPER.bb.min.y,-SUPER.ctr.z);
+ const rot=new THREE.Group();rot.add(wrap);rot.rotation.y=(SUPER.alongX?-Math.PI/2:0)+(SUPER.flip?Math.PI:0);
+ const wheels=['wheel_fl','wheel_fr','wheel_rl','wheel_rr'].map(n=>inner.getObjectByName(n));
+ const L=Math.max(SUPER.size.x,SUPER.size.z)/2,Wd=Math.min(SUPER.size.x,SUPER.size.z)/2;
+ return{rot,paint,tail,wheels,hl:L,hw:Wd,top:SUPER.size.y};}
 const cars=[];
 function polTex(){const [c,x]=cvs(256,64);x.clearRect(0,0,256,64);x.font='bold 46px Arial Black, Arial';x.fillStyle='#1f3a8a';x.textAlign='center';x.textBaseline='middle';x.fillText('POLICE',128,34);return toTex(c,false);}
 let POL_TEX=null;
 function makeCar(x,z,h,mode,opt={}){
- const police=mode==='police';const type=opt.type||(police?'sedan':pick(['sedan','sedan','suv','hatch','sport','suv']));const t=CAR_TYPES[type];
+ const police=mode==='police';const type=opt.type||(police?'sedan':Math.random()<0.07?'super':pick(['sedan','sedan','suv','hatch','sport','suv']));const t=CAR_TYPES[type];
+ if(type==='super'){const color=opt.color||pick(['#b0101a','#f2c230','#0d0d0f','#ffffff','#1e6fd9','#ff6a00']);const sp=buildSuper(color,opt);const g=new THREE.Group(),body=new THREE.Group();g.add(body);body.add(sp.rot);g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
+  const hp=opt.hp||6;const car={g,body,bodyMat:sp.paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:sp.hw,hl:sp.hl,top:sp.top+0.02,cruise:MR(10,14),wheels:sp.wheels.filter(Boolean),superW:true,tail:sp.tail,red:null,blue:null,
+   stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||48,dir:0,road:0,next:0,owned:!!opt.owned,type,name:opt.name||'Vento GT'};cars.push(car);return car;}
  const taxi=!police&&!opt.color&&type==='sedan'&&Math.random()<0.15;
  const color=opt.color||(police?'#f4f4f4':taxi?'#f2c230':pick(CAR_COLS));
  const paint=new THREE.MeshPhysicalMaterial({color,metalness:opt.gold?0.95:0.55,roughness:opt.gold?0.18:0.32,clearcoat:1,clearcoatRoughness:0.06});
  const G=carGeos(type);const g=new THREE.Group(),body=new THREE.Group();g.add(body);
  const bm=new THREE.Mesh(G.body,paint);bm.castShadow=true;body.add(bm);const gm=new THREE.Mesh(G.glass,carGlass);gm.castShadow=true;body.add(gm);
- const L=t.len/2,b=t.belt;
- for(const s of [-1,1]){addM(body,new THREE.BoxGeometry(0.38,0.12,0.05),basic('#fff6d8'),s*(t.w/2-0.32),b-0.28,L+0.02,false);addM(body,new THREE.BoxGeometry(0.42,0.1,0.05),basic('#ff2a2a'),s*(t.w/2-0.3),b-0.22,-L-0.02,false);}
+ const L=t.len/2,b=t.belt;const tail=new THREE.MeshBasicMaterial({color:'#7a0c0c'});
+ for(const s of [-1,1]){addM(body,new THREE.BoxGeometry(0.38,0.12,0.05),basic('#fff6d8'),s*(t.w/2-0.32),b-0.28,L+0.02,false);addM(body,new THREE.BoxGeometry(0.42,0.1,0.05),tail,s*(t.w/2-0.3),b-0.22,-L-0.02,false);}
  addM(body,new THREE.BoxGeometry(t.w*0.5,0.12,0.04),M.dark,0,t.clr+0.12,L+0.05,false);
  let red=null,blue=null;
  if(police){red=new THREE.MeshBasicMaterial({color:'#ff2020'});blue=new THREE.MeshBasicMaterial({color:'#2050ff'});
@@ -712,10 +733,10 @@ function makeCar(x,z,h,mode,opt={}){
    addM(body,new THREE.BoxGeometry(0.02,0.1,t.len-0.6),mat('#1f3a8a'),s*(t.w/2+0.02),b-0.62,0,false);}}
  if(taxi){addM(body,new THREE.BoxGeometry(0.6,0.18,0.25),basic('#fff3a0'),0,t.roof+0.12,-0.1,false);}
  if(type==='van'){addM(body,new THREE.ConeGeometry(0.3,0.7,10),mat('#f9e2ae'),0,t.roof+0.4,-0.6);addM(body,new THREE.SphereGeometry(0.3,10,8),mat('#ff9ac8'),0,t.roof+0.8,-0.6);}
- const wheels=[];for(const sx of [-1,1])for(const sz of [-1,1]){const wg=new THREE.Group();wg.position.set(sx*(t.w/2-0.14),0.36,sz*G.wx);g.add(wg);const tm=new THREE.Mesh(tireGeo,tireMat);tm.castShadow=true;wg.add(tm);wg.add(new THREE.Mesh(rimGeo,rimMat));wheels.push(wg);}
+ const wheels=[];for(const sx of [-1,1])for(const sz of [-1,1]){const wg=new THREE.Group();wg.rotation.order='YXZ';wg.userData.front=sz>0;wg.position.set(sx*(t.w/2-0.14),0.36,sz*G.wx);g.add(wg);const tm=new THREE.Mesh(tireGeo,tireMat);tm.castShadow=true;wg.add(tm);wg.add(new THREE.Mesh(rimGeo,rimMat));wheels.push(wg);}
  g.position.set(x,0,z);g.rotation.y=h;scene.add(g);
  const hp=opt.hp||(police?7:4);
- const car={g,body,bodyMat:paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:t.w/2,hl:L,top:t.roof+0.03,cruise:MR(8,12),wheels,red,blue,
+ const car={g,body,bodyMat:paint,base:new THREE.Color(color),x,z,h,speed:0,mode,health:hp,maxHealth:hp,hw:t.w/2,hl:L,top:t.roof+0.03,cruise:MR(8,12),wheels,red,blue,tail,
   stun:0,reverse:0,stuckT:0,deployed:0,wreckT:0,dx:0,dz:0,maxSpd:opt.spd||28,dir:0,road:0,next:0,owned:!!opt.owned,type,name:police?'Police Cruiser':taxi?'Miami Taxi':t.name};
  cars.push(car);return car;}
 function damageCar(c,amt,byPlayer){if(c.mode==='wrecked')return;if(c===P.car&&S.ups.armor)amt*=0.5;c.health-=amt;const f=Math.max(0,c.health/c.maxHealth);
@@ -743,7 +764,7 @@ function updTraffic(c,dt){
  const along0=d<2?c.x:c.z,toNext=(c.next-along0)*sgn;
  const red=(d<2)!==(lightPhase===0);
  if(red&&toNext>7&&toNext<15)ts=0;
- c.speed+=clamp(ts-c.speed,-22*dt,7*dt);
+ c.braking=ts<c.speed-0.5;c.speed+=clamp(ts-c.speed,-22*dt,7*dt);
  let along;
  if(d<2){c.x+=sgn*c.speed*dt;c.z+=(c.road*CELL+sgn*3-c.z)*Math.min(1,dt*3);along=c.x;}else{c.z+=sgn*c.speed*dt;c.x+=(c.road*CELL-sgn*3-c.x)*Math.min(1,dt*3);along=c.z;}
  if((sgn>0&&along>=c.next)||(sgn<0&&along<=c.next)){const at=c.next,k=Math.round(at/CELL),opts=[];
@@ -767,15 +788,25 @@ function updPolice(c,dt){
 let nitroFuel=3;
 function updPlayerCar(c,dt){
  const inp=getMove();const thr=inp.y,steer=inp.x;let max=c.maxSpd;
+ const hb=!S.ups.nitro&&jumpHeld();
  if(S.ups.nitro&&jumpHeld()&&nitroFuel>0){max*=1.6;c.speed+=30*dt;nitroFuel-=dt;if(Math.random()<0.5)burst(c.x-Math.sin(c.h)*2.4,0.5,c.z-Math.cos(c.h)*2.4,'#ff9f1c',1,2,0.3);}
  else nitroFuel=Math.min(3,nitroFuel+dt*0.5);
- if(thr>0.1)c.speed+=(c.speed<0?32:16)*thr*dt;else if(thr<-0.1)c.speed+=(c.speed>0?34:12)*thr*dt;else c.speed*=Math.pow(0.45,dt);
+ const acc=c.superW?26:16;
+ if(thr>0.1)c.speed+=(c.speed<0?32:acc)*thr*dt*(1-Math.max(0,c.speed)/max*0.5);else if(thr<-0.1)c.speed+=(c.speed>0?36:12)*thr*dt;else c.speed*=Math.pow(0.55,dt);
+ if(hb)c.speed*=Math.pow(0.55,dt);
  c.speed=clamp(c.speed,-9,max);
- if(!S.ups.nitro&&jumpHeld())c.speed*=Math.pow(0.1,dt);
- c.h-=steer*2.2*dt*clamp(c.speed/7,-1,1);
- const before=Math.abs(c.speed);c.x+=Math.sin(c.h)*c.speed*dt;c.z+=Math.cos(c.h)*c.speed*dt;
- if(carVsWorld(c)){if(before>12){damageCar(c,1);shake=0.3;}c.speed*=0.35;}
- c.body.rotation.z=lerpAngle(c.body.rotation.z,-steer*clamp(c.speed/30,-1,1)*0.05,Math.min(1,dt*6));}
+ if(c.vh===undefined)c.vh=c.h;
+ c.h-=steer*(hb?3.1:2.2)*dt*clamp(c.speed/7,-1,1)*(c.superW?1.1:1);
+ const grip=hb?1.1:(Math.abs(c.speed)>24&&Math.abs(steer)>0.6?3.5:10);
+ c.vh=lerpAngle(c.vh,c.h,Math.min(1,grip*dt));
+ const drift=Math.abs(angDiff(c.vh,c.h));
+ if(drift>0.18&&Math.abs(c.speed)>7&&Math.random()<0.8){for(const s of [-1,1])burst(c.x-Math.sin(c.h)*c.hl*0.8+Math.cos(c.h)*s*0.8,0.25,c.z-Math.cos(c.h)*c.hl*0.8-Math.sin(c.h)*s*0.8,'#d9d6d0',1,1.2,0.9,-1.5);}
+ c.braking=(thr<-0.1&&c.speed>0.5)||hb;
+ const before=Math.abs(c.speed);c.x+=Math.sin(c.vh)*c.speed*dt;c.z+=Math.cos(c.vh)*c.speed*dt;
+ if(carVsWorld(c)){if(before>12){damageCar(c,1);shake=0.3;}c.speed*=0.35;c.vh=c.h;}
+ c.steerVis=steer;
+ c.body.rotation.z=lerpAngle(c.body.rotation.z,-steer*clamp(c.speed/30,-1,1)*0.06,Math.min(1,dt*6));
+ c.body.rotation.x=lerpAngle(c.body.rotation.x,thr>0.1&&c.speed<max*0.8?-0.025:c.braking&&c.speed>3?0.03:0,Math.min(1,dt*5));}
 function carCollisions(){for(let i=0;i<cars.length;i++){const a=cars[i];for(let j=i+1;j<cars.length;j++){const b=cars[j];const dx=b.x-a.x,dz=b.z-a.z,d2=dx*dx+dz*dz;if(d2>16||d2<1e-6)continue;
  const d=Math.sqrt(d2),p=(4-d)/2,nx=dx/d,nz=dz/d;a.x-=nx*p;a.z-=nz*p;b.x+=nx*p;b.z+=nz*p;
  const rel=Math.abs(a.speed-b.speed)+Math.abs(a.speed)*0.3+Math.abs(b.speed)*0.3;
@@ -1173,7 +1204,7 @@ function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${
  if(tab==='Menu')for(const x of CAFE)h+=card(x.icon,x.name,x.desc,buyBtn(x.cost,'snack:'+x.id));
  if(tab==='Mischief'){h+=card('🫙','Grab the tip jar','+$80 but the cops will come looking (+1.5 ★)',s.cd>clock?`<b>${Math.ceil(s.cd-clock)}s</b>`:`<button class="btn sm pink" data-act="tip">Grab it</button>`);
   h+=card('🍭','Sneak a candy','Free candy... +1 ★',`<button class="btn sm pink" data-act="lolly">Sneak</button>`);}
- if(tab==='Cars')for(const r of RIDES)h+=card(r.icon,r.name,r.desc,S.rides.includes(r.id)?`<button class="btn sm" data-act="ride:${r.id}">Deliver</button>`:buyBtn(r.cost,'ride:'+r.id),S.rides.includes(r.id)?'owned':'');
+ if(tab==='Cars'){h+='<div class="sec">🏎️ Supercars & cars</div>';}if(tab==='Cars')for(const r of RIDES)h+=card(r.icon,r.name,r.desc,S.rides.includes(r.id)?`<button class="btn sm" data-act="ride:${r.id}">Deliver</button>`:buyBtn(r.cost,'ride:'+r.id),S.rides.includes(r.id)?'owned':'');
  if(tab==='Bank'){h+=card('💰','Sneak into the vault','+$1000 cash, but the alarm goes off (+3 ★). The vault refills every 2 minutes.',s.cd>clock?`<b>${Math.ceil(s.cd-clock)}s</b>`:`<button class="btn sm pink" data-act="vault">Sneak in</button>`);
   h+=card('📊','Your stats',`Golden stars found: ${S.found} · Characters: ${S.chars.length} · Accessories: ${S.accs.length}`,'');}
  if(tab==='Front Desk'&&s.type==='police'){const st=stars();h+=card('🧾','Pay your fine',st?`Clear your ${'★'.repeat(st)} wanted level`:'You are not wanted. Nice!',st?buyBtn(150*st,'fine'):'');
@@ -1182,7 +1213,7 @@ function renderStore(){const s=curStore;$('storeHead').textContent=`${s.icon} ${
   h+=card('🏊','Rooftop pool pass','Take the elevator straight to the roof',buyBtn(50,'roof'));
   h+=card('🍹','Room service: Virgin Piña Colada','Fast and bouncy for 20s',buyBtn(45,'snack:both'));}
  if(tab==='Garage'){if(!P.car)h+=card('🎨','Drive a car in here','Bring a car to get a new paint job. Repairs included, and the cops lose track of you!','');
-  else{const cost=stars()?100*stars():50;h+=card('🎨','Respray + repair',`New color, fully repaired${stars()?', and your wanted level is cleared':''}`,buyBtn(cost,'spray'));}}
+  else{const cost=stars()?100*stars():50;h+=card('🎨','Respray + repair',`Pick a color: fully repaired${stars()?', and your wanted level is cleared':''} · $${cost}`,'');h+=`<div class="sw">${['#b0101a','#f2c230','#0d0d0f','#ffffff','#1e6fd9','#ff6a00','#2f8f4e','#8e6bbf','#ff4fa3','#5ef0ff','#c9ccd1','#e8c547'].map(c=>`<div style="background:${c}" data-act="spray:${c}"></div>`).join('')}</div>`;}}
  $('storeBody').innerHTML=h;}
 $('storeTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;storeTab=+b.dataset.tab;renderStore();});
 $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const ps=b.dataset.act.split(':');const a=ps[0],id=ps[1],val=ps[2];const s=curStore;
@@ -1200,13 +1231,13 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='vault'){addCash(1000);addHeat(3);s.cd=clock+120;sub('🚨 VAULT ALARM! +$1000. RUN!');}
  if(a==='ride'){const r=RIDES.find(x=>x.id===id);if(S.rides.includes(id)||pay(r.cost)){if(!S.rides.includes(id))S.rides.push(id);
    const old=cars.find(c=>c.rideId===id);if(old&&old!==P.car){scene.remove(old.g);cars.splice(cars.indexOf(old),1);}
-   const c=makeCar(s.x,s.z,Math.random()*6,'parked',{type:r.type,color:r.color,spd:r.spd,hp:r.hp,owned:true,gold:id==='gold'});c.rideId=id;c.name=r.name;
+   const c=makeCar(s.x,s.z,Math.random()*6,'parked',{type:r.type,color:r.color,spd:r.spd,hp:r.hp,owned:true,gold:!!r.gold,chrome:!!r.chrome,name:r.name});c.rideId=id;c.name=r.name;
    for(let t=0;t<20;t++)carVsWorld(c);sub(r.icon+' Your '+r.name+' is parked outside!');}}
  if(a==='fine'){if(pay(150*stars())){heat=0;clearCops();sub('🧾 Fine paid. You\'re in the clear!');}}
  if(a==='freedonut'){S.gad.donut=(S.gad.donut||0)+1;sub('🍩 +1 Donut Decoy');}
  if(a==='suite'){if(pay(300)){S.home={x:s.x,z:s.z,name:s.name};sub('🛏️ '+s.name+' is now your home!');}}
  if(a==='roof'){if(pay(50)){P.x=s.roof.x;P.z=s.roof.z;P.y=s.roof.y;P.vy=0;P.airMax=P.y;state='play';showScreen(null);rebuildPlayer();updWeapon();sub('🏊 Welcome to the rooftop!');save();return;}}
- if(a==='spray'&&P.car){if(pay(stars()?100*stars():50)){const c=P.car;const col=pick(CAR_COLS);c.base.set(col);c.health=c.maxHealth;c.bodyMat.color.set(col);c.body.scale.y=1;c.body.rotation.z=0;c.bodyMat.clearcoat=1;c.bodyMat.roughness=0.32;if(stars()){heat=0;clearCops();}sub('🎨 Fresh paint! Nobody recognizes you.');}}
+ if(a==='spray'&&P.car){if(pay(stars()?100*stars():50)){const c=P.car;const col=id&&id.startsWith('#')?id:pick(CAR_COLS);c.base.set(col);c.health=c.maxHealth;c.bodyMat.color.set(col);c.body.scale.y=1;c.body.rotation.z=0;c.bodyMat.clearcoat=1;c.bodyMat.roughness=0.32;if(stars()){heat=0;clearCops();}sub('🎨 Fresh paint! Nobody recognizes you.');}}
  save();renderStore();if(a==='look'||a==='char'||a==='acc'||a==='up')rebuildPlayer();});
 
 // ---------------------------------------------------------------- HUD
@@ -1287,7 +1318,9 @@ function update(dt){
  for(const c of cars){const ox=c.x,oz=c.z;
   if(c.mode==='traffic')updTraffic(c,dt);else if(c.mode==='police'&&state!=='title')updPolice(c,dt);else if(c.mode==='wrecked'){c.wreckT+=dt;if(Math.random()<dt*3)burst(c.x,1.2,c.z,'#666666',1,1,1.5,-2);}
   c.x=clamp(c.x,-34,CITY+60);c.z=clamp(c.z,-34,CITY+34);c.dx=c.x-ox;c.dz=c.z-oz;
-  c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;for(const w of c.wheels)w.rotation.x+=c.speed*dt/0.36;c.g.visible=Math.hypot(c.x-px,c.z-pz)<220;}
+  c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;for(const w of c.wheels){w.rotation.x+=c.speed*dt/0.36;if(w.userData.front)w.rotation.y=(c===P.car?-(c.steerVis||0)*0.45:0);}
+  if(c.tail){const br=c.health/c.maxHealth<0.5?'dead':c.braking?'on':'off';if(br!==c.tailS){c.tailS=br;if(c.tail.isMeshBasicMaterial)c.tail.color.set(br==='on'?'#ff3a3a':br==='dead'?'#200404':'#7a0c0c');else c.tail.emissiveIntensity=br==='on'?3:br==='dead'?0:0.4;}}
+  if(c.mode!=='wrecked'&&c.health/c.maxHealth<0.4&&Math.random()<dt*4)burst(c.x+Math.sin(c.h)*c.hl*0.7,1.1,c.z+Math.cos(c.h)*c.hl*0.7,'#777777',1,0.8,1.2,-2);c.g.visible=Math.hypot(c.x-px,c.z-pz)<220;}
  carCollisions();
  for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.mode==='wrecked'&&c.wreckT>45&&Math.hypot(c.x-px,c.z-pz)>60){scene.remove(c.g);cars.splice(i,1);}}
  if(cars.filter(c=>c.mode==='traffic').length<(isTouch?18:24)&&Math.random()<dt)spawnTraffic(true);
