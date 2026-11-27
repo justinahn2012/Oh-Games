@@ -382,6 +382,10 @@ function addPalm(x,z,h=R(7,11),y0=0.15){const lean=R(-1,1),lz=R(-1,1);let py=y0;
   g.translate(0,len/2,0);g.rotateX(-Math.PI/2+R(0.25,0.6));g.rotateY(k/11*Math.PI*2+R(-0.2,0.2));g.computeVertexNormals();addStatic(g,k%2?M.leaf:M.leaf2,px,py,pz);}
  addStatic(new THREE.SphereGeometry(0.3,6,5),M.trunk,px,py-0.15,pz);addSolid(x-0.25,x+0.25,0,y0+3,z-0.25,z+0.25);}
 function addTree(x,z){addStatic(new THREE.CylinderGeometry(0.2,0.28,2.6,7),M.trunk,x,1.45,z);for(let i=0;i<4;i++)addStatic(new THREE.IcosahedronGeometry(R(1.2,1.7),1),M.hedge,x+R(-0.8,0.8),R(3,3.9),z+R(-0.8,0.8));addSolid(x-0.3,x+0.3,0,2.5,z-0.3,z+0.3);}
+const ladders=[];const ladderMat=mat('#6b7078',{metalness:0.7,roughness:0.35});
+function addLadder(L,u,vFace,y0,y1){const v=vFace-0.12,hh=y1-y0;for(const s of [-0.28,0.28])lbox(L,u+s,v,y0,0.06,hh+0.9,0.06,ladderMat,false,true);
+ for(let y=y0+0.3;y<y1+0.6;y+=0.36)lbox(L,u,v,y,0.56,0.04,0.05,ladderMat,false,false);
+ const sp=lpt(L,u,vFace-0.5);ladders.push({x:sp.x,z:sp.z,nx:-L.nx,nz:-L.nz,y0,y1});}
 function climbRoute(L,front,w,h,withCoins=true){let side=1,k=0;
  for(let y=2.3;y<h-0.5;y+=2.4){lbox(L,side*2,front+0.8,y,3.2,0.25,1.6,M.slab);lbox(L,side*2,front+1.55,y+0.25,3.2,0.9,0.06,M.rail,false,false);
   if(withCoins&&k%2===1){const p=lpt(L,side*2,front+0.8);coinSpots.push({x:p.x,y:y+1.1,z:p.z});}side*=-1;k++;}}
@@ -434,6 +438,7 @@ function buildGlassTower(L,minH,maxH){
  else{lbox(L,0,v,roofY,w+0.3,0.5,d+0.3,M.roof);roofY+=0.5;
   if(top<0.7){const p=lpt(L,0,v);addStatic(new THREE.CylinderGeometry(3.4,3.4,0.15,24),M.dark,p.x,roofY+0.08,p.z);addStatic(new THREE.RingGeometry(1.2,1.5,24).rotateX(-Math.PI/2),M.yellow,p.x,roofY+0.17,p.z);addSolid(p.x-3.4,p.x+3.4,roofY,roofY+0.16,p.z-3.4,p.z+3.4);}
   starSpots.push({x:b.x,y:roofY+1.4,z:b.z});}
+ addLadder(L,w/2-1.6,v-d/2,0.15,h+0.65);if(top<0.4)addLadder(L,(w-3)/2-1.2,v-(d-3)/2,h+0.65,h+7.05);
  {const dp=lpt(L,0,v+d/2+1.4);towerHomes.push({x:dp.x,z:dp.z,roof:{x:b.x,y:roofY+0.3,z:b.z}});}
  if(rnd()<0.6){const nm=rpick(NEONS);lbox(L,0,v+d/2+0.1,h-0.6,w,0.25,0.12,nm,false,false);}
  climbRoute(L,v+d/2,w,h);
@@ -446,6 +451,7 @@ function buildCondo(L,minH,maxH){
  for(let y=3;y<h-1;y+=3)for(const s of [-1,1]){lbox(L,s*(w/2+0.7),v,y,1.4,0.22,d-1,M.slab);lbox(L,s*(w/2+1.37),v,y+0.22,0.06,1.0,d-1,M.rail,false,false);}
  climbRoute(L,v+d/2,w,h);
  const p=lpt(L,0,v);addStatic(new THREE.BoxGeometry(4,0.1,4),M.pool,p.x,h+0.7,p.z,false);
+ addLadder(L,w/2-1.6,v-d/2,0.15,h+0.65);
  {const dp=lpt(L,0,v+d/2+1.4);condoHomes.push({x:dp.x,z:dp.z,roof:{x:b.x,y:h+0.8,z:b.z}});}
  starSpots.push({x:b.x,y:h+0.65+1.4,z:b.z});for(let i=0;i<2;i++)coinSpots.push({x:b.x+R(-3,3),y:h+1.6,z:b.z+R(-3,3)});
  const c=lpt(L,-w/2-0.9,v+d/2-1);crate(c.x,c.z);
@@ -466,6 +472,7 @@ function buildShop(L,type,dist){
  else{const g=rpick([['BOUTIQUE','style'],['PHARMACY','mart'],['SURF SHOP','style'],['JUICE BAR','cafe'],['PIZZA','cafe'],['TACOS','cafe'],['BARBER','style'],['BODEGA','mart'],['SNEAKERS','style'],['BAKERY','cafe']]);storefront(L,front,w,g[1],g[0]);}
  lbox(L,0,front+0.6,4.8,6,0.2,1.2,M.slab);lbox(L,0,front+1.17,5,6,0.9,0.06,M.rail,false,false);
  const dp=lpt(L,w/2+1.1,front-1.6);addStatic(new THREE.BoxGeometry(1.4,1.5,1.4),M.dumpster,dp.x,0.9,dp.z);addSolid(dp.x-0.7,dp.x+0.7,0,1.65,dp.z-0.7,dp.z+0.7);
+ addLadder(L,w/2-1.6,v-d/2,0.15,h+0.5);
  starSpots.push({x:b.x,y:h+0.5+1.4,z:b.z});coinSpots.push({x:b.x+R(-3,3),y:h+1.4,z:b.z});
 }
 function buildHotel(L,name){
@@ -485,6 +492,7 @@ function buildHotel(L,name){
   addStatic(new THREE.CylinderGeometry(0.03,0.03,2.3,5),M.pole,p.x,1.3,p.z,false);addStatic(new THREE.ConeGeometry(1.1,0.4,8),mat(rpick(['#ffffff','#ff4fa3','#2ec4b6'])),p.x,2.5,p.z);}
  const door=lpt(L,w/6,front+1.9);const st={type:'hotel',name:'HOTEL '+name,icon:'🏨',x:door.x,z:door.z,cd:0,roof:{x:b.x,y:h+1.5,z:b.z}};stores.push(st);
  const sp=lpt(L,w/6,front+2.62);const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.5,0.6),new THREE.MeshBasicMaterial({map:signTex(name,nm.color.getStyle())}));sign.position.set(sp.x,3.45,sp.z);sign.rotation.y=Math.atan2(L.nx,L.nz);scene.add(sign);
+ addLadder(L,w/2-1.8,v-d/2,0.15,h+1.35);
  starSpots.push({x:b.x,y:h+1.35+1.4,z:b.z});coinSpots.push({x:b.x,y:h+2.3,z:b.z});
  const c=lpt(L,w/2+0.9,front-1);crate(c.x,c.z);
 }
@@ -496,6 +504,7 @@ function buildWarehouse(L,type){
  const front=v+d/2;
  if(type)storefront(L,front,w,type);else lbox(L,0,front+0.04,0.15,5,4,0.08,M.metal,false,false);
  climbRoute(L,front,w,h);
+ addLadder(L,w/2-1.6,v-d/2,0.15,h+0.45);
  starSpots.push({x,y:h+0.45+1.4,z});coinSpots.push({x,y:h+1.5,z});
  const c=lpt(L,-w/2-0.9,front-1);crate(c.x,c.z);
 }
@@ -509,6 +518,7 @@ function buildHouse(L){
  lbox(L,-8.5,0,0.15,0.6,1.2,16,M.hedge);
  const pp=lpt(L,5.5,6.2);addPalm(pp.x,pp.z,R(6,8));
  const c=lpt(L,6.1,1.5);crate(c.x,c.z);
+ addLadder(L,3.5,-6,0.15,3.95);addLadder(L,-4.5,-5.5,3.95,7.25);
  starSpots.push({x:b2.x,y:7.25+1.4,z:b2.z});coinSpots.push({x:b.x,y:4.95,z:b.z},{x:b2.x,y:8.3,z:b2.z});
 }
 function buildPark(L,dist){lbox(L,0,0,0.15,17,0.04,17,M.grass,false,false);
@@ -525,6 +535,7 @@ function buildSpray(L){const w=13,d=11,h=5.5,v=-1;const b=lbox(L,0,v,0.15,w,h,d,
  for(let k=0;k<6;k++)lbox(L,0,front+0.06,0.4+k*0.62,5.8,0.06,0.04,M.metal,false,false);
  const sp=lpt(L,0,front+0.12);const sign=new THREE.Mesh(new THREE.PlaneGeometry(8,1.1),new THREE.MeshBasicMaterial({map:signTex("SPRAY 'N' GO",'#ff4d4d')}));sign.position.set(sp.x,4.8,sp.z);sign.rotation.y=Math.atan2(L.nx,L.nz);scene.add(sign);
  const door=lpt(L,0,front+3);stores.push({type:'spray',name:"SPRAY 'N' GO",icon:'🎨',x:door.x,z:door.z,cd:0,drive:true});
+ addLadder(L,w/2-1.6,v-d/2,0.15,h+0.45);
  starSpots.push({x:b.x,y:h+0.45+1.4,z:b.z});const c=lpt(L,w/2+0.9,front-1);crate(c.x,c.z);}
 
 // ---------------- Star Island: waterfront mansions
@@ -555,6 +566,7 @@ function buildMansion(L,id,name,price){
  const door=lpt(L,-3,8.4);const roof=lpt(L,3,-1);
  const h={id,name,price,icon:'🏰',type:'home',x:door.x,z:door.z,roof:{x:roof.x,y:y0+12.2,z:roof.z},mansion:true,garage:lpt(L,7.5,13)};
  HOMES.push(h);stores.push(h);
+ addLadder(L,-8,-7.5,y0,y0+4.4);addLadder(L,-8,-6.5,y0+4.4,y0+8.4);addLadder(L,3,-6,y0+8.4,y0+11.95);
  starSpots.push({x:roof.x,y:y0+12+1.4,z:roof.z});coinSpots.push({x:roof.x,y:y0+12.9,z:roof.z});
 }
 function buildIsland(){
@@ -1249,8 +1261,15 @@ function getMove(){let x=0,y=0;if(keys.KeyW||keys.ArrowUp)y+=1;if(keys.KeyS||key
  if(joy.id!==null){x=joy.x;y=joy.y;}const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}return{x,y};}
 
 // ---------------------------------------------------------------- on foot
+function nearLadder(){for(const l of ladders){if(Math.abs(l.x-P.x)>1.2||Math.abs(l.z-P.z)>1.2)continue;if(Math.hypot(l.x-P.x,l.z-P.z)<0.8&&P.y>=l.y0-0.4&&P.y<l.y1-0.3)return l;}return null;}
 function updFoot(dt){
  if(P.grap){updGrapple(dt);return;}
+ if(P.climb){const l=P.climb,inp=getMove();P.x=l.x;P.z=l.z;P.vx=P.vz=0;P.vy=0;P.yaw=Math.atan2(-l.nx,-l.nz);const vy=(Math.abs(inp.y)>0.2?inp.y:0)*4.2;P.y+=vy*dt;P.airMax=P.y;P.onGround=false;
+  if(P.y>=l.y1-0.05){P.y=l.y1+0.02;P.x=l.x-l.nx*1.25;P.z=l.z-l.nz*1.25;P.climb=null;P.onGround=true;P.airMax=P.y;}
+  else if(P.y<=l.y0&&vy<0){P.y=l.y0;P.climb=null;P.onGround=true;}
+  else if(edge.jump){P.climb=null;P.vx=l.nx*4;P.vz=l.nz*4;P.vy=5;}
+  model.g.position.set(P.x,P.y,P.z);model.g.rotation.y=P.yaw;animHuman(model,Math.abs(vy)>0.1?1.6:0,false,dt);return;}
+ {const l=nearLadder();if(l){const inp=getMove();const fx=Math.sin(camYaw),fz=Math.cos(camYaw);const mx=fx*inp.y-fz*inp.x,mz=fz*inp.y+fx*inp.x;if(mx*-l.nx+mz*-l.nz>0.35){P.climb=l;P.y=Math.max(P.y,l.y0);return;}}}
  const inp=getMove();const fx=Math.sin(camYaw),fz=Math.cos(camYaw),rx=-fz,rz=fx;
  const mx=fx*inp.y+rx*inp.x,mz=fz*inp.y+rz*inp.x,mag=Math.hypot(mx,mz);
  const spd=P.speedT>0?14:9;const acc=P.onGround?14:5;
@@ -1300,7 +1319,7 @@ function updPrompt(){let t='';const K=isTouch?'Tap 🚪':'Press <b>E</b>';
  else{const s=nearestStore(3.2),c=nearestCar(3.6);
   if(s&&(!c||Math.hypot(s.x-P.x,s.z-P.z)<Math.hypot(c.x-P.x,c.z-P.z)))t=s.type==='home'&&!(S.homes||[]).includes(s.id)?`🏷️ <b>${s.name}</b> for sale: $${fmt(s.price)} · ${K} to look inside`:`${K} to enter <b>${s.name}</b>`;
   else if(c)t=c.rental&&!c.owned?`${K} to rent the <b>ZIP e-bike</b> ($5 + $2/30s)`:`${K} to ${c.mode==='traffic'||c.mode==='police'?'borrow':c.bike?'ride':'drive'} the <b>${c.name}</b>`;}
- promptText=t;$('bAct').textContent=P.car?'⬇️':(t?'🚪':'·');}
+ if(!t&&!P.car){if(P.climb)t='🪜 Climbing: up / down to move, jump to let go';else if(nearLadder())t='🪜 Walk into the ladder to climb';}promptText=t;$('bAct').textContent=P.car?'⬇️':(t?'🚪':'·');}
 
 // ---------------------------------------------------------------- stores
 let curStore=null,storeTab=0;
@@ -1585,7 +1604,7 @@ function update(dt){
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*(wheelOpen?0.2:1);last=now;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.__dbg={cam:(y,p)=>{camYaw=y;camPitch=p;},spawnOfficer,makeHuman,rebuild:()=>rebuildPlayer(),S,get model(){return model;}};
-window.__game={P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
+window.__game={P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
 </script>
 </body>
 </html>
