@@ -34,6 +34,13 @@
   body.touch #help{top:calc(140px + env(safe-area-inset-top));max-width:260px;font-size:13px}
   #area{top:30%;left:0;right:0;text-align:center;font-size:44px;font-style:italic;opacity:0;transition:opacity .6s;color:#fff}
   #area small{display:block;font-size:20px;color:#ffd0f0;-webkit-text-stroke:1px #000}
+  #radioBtn{position:fixed;right:16px;top:calc(120px + env(safe-area-inset-top));width:52px;height:52px;border-radius:50%;border:2px solid #ffffff66;background:#000000b8;font-size:24px;cursor:pointer;display:none;z-index:6}
+  body.touch #radioBtn{top:auto;bottom:calc(200px + env(safe-area-inset-bottom))}
+  #radioBtn.ping{background:#d6a700;border-color:#fff}
+  #radio{position:fixed;right:16px;top:calc(180px + env(safe-area-inset-top));width:min(340px,70vw);background:#0b1410e8;border:2px solid #3c6b4a;border-radius:10px;color:#e8ffe8;font:14px/1.35 system-ui,sans-serif;display:none;flex-direction:column;gap:6px;padding:8px;z-index:6}
+  #radio .rtop{display:flex;gap:6px;align-items:center;flex-wrap:wrap}#radio .rch{padding:3px 8px;border-radius:10px;background:#ffffff1a;cursor:pointer;font-size:12px}#radio .rch.on{background:#3c8b5a}
+  #radio .rlog{max-height:170px;overflow-y:auto;background:#00000066;border-radius:6px;padding:6px;font-family:ui-monospace,monospace;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+  #radio .rbtns{display:grid;grid-template-columns:1fr 1fr;gap:5px}#radio .rbtns button{font:bold 13px system-ui;padding:8px;border-radius:6px;border:none;background:#2d5e3d;color:#fff;cursor:pointer}
   #subs{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(26px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;width:90%}
   .sub{font-size:19px;font-weight:bold;text-shadow:0 0 3px #000,0 0 6px #000,1px 1px 0 #000;text-align:center;animation:sin .2s ease-out}
   @keyframes sin{from{opacity:0;transform:translateY(6px)}}
@@ -90,6 +97,7 @@
 <div id="radarWrap"><canvas id="radar" width="440" height="300"></canvas><div id="bar"><i></i></div></div>
 <div class="hud gta" id="area"></div>
 <div id="subs"></div>
+<button id="radioBtn" title="Radio (R)">📻</button><div id="radio"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="btns">
   <button id="bJump">⤒</button>
@@ -1401,7 +1409,7 @@ $('ctrlHint').innerHTML=isTouch?'Left side: drag to move · Right side: drag to 
 if(isTouch)$('btns').style.display='block';
 const keys={},edge={};
 addEventListener('keydown',e=>{if(e.repeat)return;keys[e.code]=true;
- if(e.code==='Space')edge.jump=true;if(e.code==='KeyE')edge.act=true;if(e.code==='KeyF')edge.use=true;if(e.code==='KeyQ'){qHeld=true;qT=clock;}
+ if(e.code==='Space')edge.jump=true;if(e.code==='KeyE')edge.act=true;if(e.code==='KeyF')edge.use=true;if(e.code==='KeyR'&&state==='play')toggleRadio();if(e.code==='KeyQ'){qHeld=true;qT=clock;}
  if(state==='play'&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();});
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyQ'){qHeld=false;if(wheelOpen)closeWheel();else edge.swap=true;}});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
@@ -1805,6 +1813,55 @@ function talkVerdict(v){const T=talkNpc;if(T.decided)return;T.decided=true;const
  sub(v==='ticket'?`🧾 Ticket written! +$${pay}`:`✋ Warning given! +$${pay}`);if(mission&&mission.type==='speeder'&&mission.car===T.obj)finishMission();renderTalk();}
 function closeTalk(){if(!talkNpc)return;const o=talkNpc.obj;if(talkNpc.driver)setTimeout(()=>releasePulled(o),1500);else o.talking=false;talkNpc=null;}
 
+// ================= EMERGENCY RADIO
+const CH={police:'🚓 Police',swat:'🛡️ SWAT',fire:'🚒 Fire',medic:'🚑 Medic',all:'📡 All Units'};
+const CALLSIGN={police:['Unit 12','Unit 7','Sgt. Rivera','Officer Chen','Unit 22'],swat:['Alpha-2','Bravo-1','Team Lead Brooks','Charlie-3'],fire:['Engine 3','Ladder 9','Captain Diaz','Engine 14'],medic:['Medic 5','Rescue 2','Paramedic Lee','Medic 11']};
+const CHATTER={police:['Traffic is heavy on Biscayne, use caution.','Just helped a tourist find South Beach. 10-4.','Grabbing a cafecito, back in five.','Kids flying a drone near the bay, all good.','Lost puppy returned to owner in Wynwood!'],
+ swat:['Training drill at the station complete.','Gear check done, team is ready.','Bravo team standing by downtown.','Armored truck refueled.'],
+ fire:['Hydrant check on Ocean Drive complete.','Engine 3 back at the station.','Smoke alarm false alarm. Burnt toast!','Ladder 9 washing the truck.'],
+ medic:['Patient transported, all good.','Restocked bandages at the hospital.','Sunscreen reminder: it\'s hot out there!','Rescue 2 back in service.'],
+ all:['All units: big parade on Calle Ocho this weekend.','All units: drawbridge on Venetian is going up.','All units: heavy rain expected later. Just kidding, it\'s Miami.','All units: great teamwork today, everyone!']};
+let radioOpen=false,radioCh='job',radioLog={job:[],all:[]},chatterT=25,backupT=0,allies=[],AC=null;
+function crackle(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*0.22,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n)*0.25;const s=AC.createBufferSource();s.buffer=b;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;f.Q.value=0.8;s.connect(f);f.connect(AC.destination);s.start();
+ const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=1250;g.gain.value=0.05;g.gain.setTargetAtTime(0,AC.currentTime+0.06,0.02);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+0.15);}catch(e){}}
+function radioMsg(who,text,ch){if(!S.job||S.job==='citizen')return;ch=ch||'job';const L=radioLog[ch];L.push({who,text});if(L.length>30)L.shift();crackle();$('radioBtn').classList.add('ping');setTimeout(()=>$('radioBtn').classList.remove('ping'),900);
+ if(!radioOpen&&who!=='You')sub('📻 '+who+': '+text);renderRadio();}
+window.radioMsg=radioMsg;window.__allies=allies;
+setTimeout(()=>{const b=$('radioBtn');if(b){b.onclick=e=>{e.stopPropagation();toggleRadio();};b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});}},0);
+function renderRadio(){const el=$('radio');if(!radioOpen){el.style.display='none';return;}el.style.display='flex';const J=S.job;
+ const L=radioLog[radioCh];el.innerHTML=`<div class="rtop"><b>📻 RADIO</b><span class="rch ${radioCh==='job'?'on':''}" data-r="ch:job">${CH[J]||'Job'}</span><span class="rch ${radioCh==='all'?'on':''}" data-r="ch:all">${CH.all}</span><span class="rch" data-r="close">✕</span></div>
+ <div class="rlog" id="rlog">${L.length?L.map(m=>`<div><b style="color:${m.who==='You'?'#7ed957':m.who==='Dispatch'?'#ffd54a':'#8fd0ff'}">${m.who}:</b> ${m.text.replace(/</g,'&lt;')}</div>`).join(''):'<div style="opacity:.6">Static... no calls yet.</div>'}</div>
+ <div class="rbtns">${['10-4','On my way','Need backup','Mission complete'].map(q=>`<button data-r="q:${q}">${q}</button>`).join('')}</div>`;
+ const lg=$('rlog');lg.scrollTop=lg.scrollHeight;}
+function toggleRadio(){if(!S.job||S.job==='citizen'){sub('📻 You need an emergency job to use the radio. Visit the Job Center!');return;}radioOpen=!radioOpen;renderRadio();}
+function radioQuick(q){const ch=radioCh;radioMsg('You',q,ch);const J=S.job,mates=CALLSIGN[J]||['Dispatch'];
+ setTimeout(()=>{if(q==='10-4')radioMsg(pick(mates),pick(['Copy that.','10-4, partner.','Roger.']),ch);
+  else if(q==='On my way'){if(mission)radioMsg('Dispatch','Copy, '+(mission.title.replace(/\(.*\)/,'').slice(0,60))+'. Waypoint is on your map.',ch);else radioMsg('Dispatch','No active call right now. Stand by.',ch);}
+  else if(q==='Need backup')callBackup(ch);
+  else if(q==='Mission complete'){if(!mission)radioMsg('Dispatch','Copy. Nice work. Next call coming soon.',ch);else radioMsg('Dispatch','Negative, the call is still open. Check your map waypoint.',ch);}},900);}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-r]');if(!t)return;const [a,v]=t.dataset.r.split(':');if(a==='ch'){radioCh=v;renderRadio();}else if(a==='close'){radioOpen=false;renderRadio();}else if(a==='q')radioQuick(v);});
+// ---- backup: AI teammates come to help
+function callBackup(ch){if(backupT>0){radioMsg('Dispatch','Backup is already rolling. Hang tight!',ch);return;}if(!mission){radioMsg('Dispatch','No active call. Backup not needed.',ch);return;}
+ const J=S.job,who=pick(CALLSIGN[J]);backupT=40;radioMsg(who,'Backup en route! ETA 10 seconds.',ch);
+ const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;const sp=roadPointAway(25,45)||{x:px+20,z:pz};const n=J==='swat'?2:1;
+ for(let i=0;i<n;i++){const look=J==='fire'?{body:'man',hs:'buzz',skin:pick(COP_SKINS),hair:'#222',shirt:'#c8202a',pants:'#2a2a2a',shoes:'#111'}:J==='medic'?{body:pick(['man','woman']),hs:'short',skin:pick(COP_SKINS),hair:'#3a2a1a',shirt:'#f0f0f0',pants:'#2a4a8a',shoes:'#111'}:J==='swat'?{body:'man',hs:'buzz',skin:pick(COP_SKINS),hair:'#1a1a1a',shirt:'#1e232b',pants:'#1e232b',shoes:'#111'}:Object.assign({},COP_LOOK,{skin:pick(COP_SKINS)});
+  const h=makeHuman(look,{},{cop:J==='police'});const a={h,x:sp.x+i*1.5,z:sp.z+i,y:0.2,vy:0,onGround:false,support:null,landVel:0,name:who,job:J,t:0,done:false,work:0};h.g.position.set(a.x,0.2,a.z);scene.add(h.g);allies.push(a);}
+ // a parked unit with lights where they arrive
+ const k=makeCar(sp.x+3,sp.z+3,Math.random()*6,'parked');k.ally=true;k.claimed=true;k.allyT=60;if(J==='police'||J==='swat'){k.bodyMat.color.set(J==='swat'?'#1e232b':'#f2f2f2');}}
+function allyTarget(a){if(!mission)return null;if(mission.perps){let best=null,bd=1e9;for(const p of mission.perps){if(p.caught)continue;const d=Math.hypot(p.x-a.x,p.z-a.z);if(d<bd){bd=d;best=p;}}return best;}if(mission.car)return mission.car;if(mission.type==='patient')return{x:mission.x,z:mission.z,y:0};return null;}
+function updAllies(dt){if(backupT>0)backupT-=dt;
+ for(let i=allies.length-1;i>=0;i--){const a=allies[i];a.t+=dt;const tg=allyTarget(a);
+  if(!tg||a.t>70){if(a.t>3){scene.remove(a.h.g);allies.splice(i,1);}continue;}
+  const dx=tg.x-a.x,dz=tg.z-a.z,d=Math.hypot(dx,dz)||1;let spd=0;
+  if(d>(mission.car?4:1.2)){spd=a.t<1?0:7.2;}else{a.work+=dt;
+   if(mission.perps&&tg.caught===false){tg.caught=true;tg.h.g.rotation.x=0;say(tg.x,tg.y+2.3,tg.z,'Aww, caught by backup!');burst(tg.x,tg.y+1,tg.z,'#e8c547',10,3,0.5);radioMsg(a.name,'Got one! Suspect is in custody.');}
+   else if(mission.car&&mission.type==='fire'&&a.work>4&&!mission.car.out){mission.car.out=true;burst(tg.x,1.5,tg.z,'#8fd0ff',30,5,0.8);radioMsg(a.name,'Fire is out! Great teamwork.');}
+   else if(mission.type==='patient'&&a.work>2){radioMsg(a.name,'Patient is stable. You can finish the call.');}}
+  a.vy-=26*dt;stepBody(a,dx/d*spd*dt,a.vy*dt,dz/d*spd*dt,0.35,1.8,0.5);a.h.g.position.set(a.x,a.y,a.z);a.h.g.rotation.y=Math.atan2(dx,dz);animHuman(a.h,spd,!a.onGround,dt);
+  if(a.job==='fire'&&mission&&mission.type==='fire'&&d<6&&Math.random()<dt*20)burst(a.x+dx/d*1.5,1.6,a.z+dz/d*1.5,'#8fd0ff',2,4,0.4);}
+ for(let i=cars.length-1;i>=0;i--){const k=cars[i];if(!k.ally)continue;k.allyT-=dt;if(k.lb){k.lb.forEach((m,j)=>m.material.emissiveIntensity=(Math.sin(clock*12+j*3)>0?3:0.1));}if(k.allyT<=0&&k!==P.car){scene.remove(k.g);cars.splice(i,1);}}}
+function updRadio(dt){if(!onDuty())return;chatterT-=dt;if(chatterT<=0){chatterT=MR(22,40);const all=Math.random()<0.3;const J=S.job;if(all){const jj=pick(['police','swat','fire','medic']);radioMsg(pick(CALLSIGN[jj]),pick(CHATTER.all),'all');}else radioMsg(pick(CALLSIGN[J]),pick(CHATTER[J]));}}
+
 // ---------------------------------------------------------------- spawn world actors
 for(let i=0;i<(isTouch?20:26);i++)spawnTraffic(false);
 for(const p of parkedSpots)makeCar(p.x,p.z,p.h,'parked');
@@ -1843,7 +1900,7 @@ function update(dt){
  for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(c.mode==='wrecked'&&c.wreckT>45&&Math.hypot(c.x-px,c.z-pz)>60){scene.remove(c.g);cars.splice(i,1);}}
  if(cars.filter(c=>c.mode==='traffic').length<(isTouch?18:24)&&Math.random()<dt)spawnTraffic(true);
  for(const p of peds)updPed(p,dt);
- if(state==='play'){for(const o of officers)updOfficer(o,dt);updWanted(dt);updSwatLevel(dt);updJobs(dt);}
+ if(state==='play'){for(const o of officers)updOfficer(o,dt);updWanted(dt);updSwatLevel(dt);updJobs(dt);updRadio(dt);updAllies(dt);$('radioBtn').style.display=(S.job&&S.job!=='citizen')?'block':'none';}
  updProjs(dt);updParts(dt);updCoins(dt);updStars();
  for(const c of clouds)c.position.x+=dt*1.5;
  waveU.value=clock;if(Math.floor(clock*0.5)!==Math.floor((clock-dt)*0.5))dispatchFire();if(aerial&&!P.climb&&Math.hypot(aerial.c.x-P.x,aerial.c.z-P.z)>45)lowerAerial();foam.material.opacity=0.55+Math.sin(clock*0.9)*0.25;foam.position.x=CITY+66+Math.sin(clock*0.9)*1.5;updBeachFolk(dt);
