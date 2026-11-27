@@ -735,10 +735,11 @@ function sideSpot(minD,maxD){for(let t=0;t<60;t++){const i=Math.floor(Math.rando
 function spawnPerp(x,z){const h=makeHuman({body:'man',hs:'short',skin:pick(SKINS),hair:'#1a1a1a',shirt:'#c0392b',pants:'#1a1a1a',shoes:'#f4f4f4'},{head:'beanie',eyes:'shades'});h.g.position.set(x,0.2,z);scene.add(h.g);
  const p={h,x,z,y:0.2,vy:0,onGround:false,support:null,landVel:0,caught:false,t:0};perps.push(p);return p;}
 function newMission(){const J=S.job;let m=null;
- if(J==='police'&&Math.random()<0.5){const k=cars.filter(c=>c.mode==='traffic'&&c.brain&&Math.hypot(c.x-P.x,c.z-P.z)>40&&Math.hypot(c.x-P.x,c.z-P.z)<160);if(k.length){const c=pick(k);c.speeder=true;c.cruise=19;m={type:'speeder',title:'🚗 A '+c.name+' is speeding! Pull it over (F in your patrol car)',car:c};}}
+ if(J==='police'&&Math.random()<0.45||J==='swat'&&Math.random()<0.2)m=newHelpMission();
+ if(!m&&J==='police'&&Math.random()<0.5){const k=cars.filter(c=>c.mode==='traffic'&&c.brain&&Math.hypot(c.x-P.x,c.z-P.z)>40&&Math.hypot(c.x-P.x,c.z-P.z)<160);if(k.length){const c=pick(k);c.speeder=true;c.cruise=19;m={type:'speeder',title:'🚗 A '+c.name+' is speeding! Pull it over (F in your patrol car)',car:c};}}
  if(!m&&J==='police'){const s=sideSpot(40,110);m={type:'perp',title:'Catch the troublemaker in the red hoodie',perps:[spawnPerp(s.x,s.z)]};}
- else if(J==='swat'&&Math.random()<0.5){const s=sideSpot(50,120);const sh=buildHideout(s);m={type:'raid',title:'🪵 Raid the hideout! Pick the Battering Ram in the Q wheel and bust the door',shed:sh,door:sh.door,x:sh.door.x,z:sh.door.z};}
- else if(J==='swat'){const s=sideSpot(50,120);m={type:'perp',title:'Round up 3 escaped troublemakers',perps:[0,1,2].map(i=>spawnPerp(s.x+i*2,s.z+i))};}
+ else if(!m&&J==='swat'&&Math.random()<0.5){const s=sideSpot(50,120);const sh=buildHideout(s);m={type:'raid',title:'🪵 Raid the hideout! Pick the Battering Ram in the Q wheel and bust the door',shed:sh,door:sh.door,x:sh.door.x,z:sh.door.z};}
+ else if(!m&&J==='swat'){const s=sideSpot(50,120);m={type:'perp',title:'Round up 3 escaped troublemakers',perps:[0,1,2].map(i=>spawnPerp(s.x+i*2,s.z+i))};}
  else if(J==='fire'){if(Math.random()<0.6){const s=randRoadSpot(50,140);const c=makeCar(s.x,s.z,Math.random()*6,'parked');c.mode='wrecked';c.health=0;c.body.scale.y=0.62;c.bodyMat.color.set('#3a3a3a');c.wreckT=5;c.claimed=true;m={type:'fire',title:'🔥 Car fire! Put it out with the water cannon',car:c};}
   else{const sp=pick(starSpots.filter(s=>s.y<30&&s.y>4));const cat=new THREE.Group();const cm=mat(pick(['#e08a3a','#2a2a2a','#d9d9d9']),{roughness:0.9});const bd=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,8),cm);bd.scale.set(1,0.8,1.5);bd.position.y=0.2;cat.add(bd);const hd=new THREE.Mesh(new THREE.SphereGeometry(0.15,12,8),cm);hd.position.set(0,0.38,0.3);cat.add(hd);for(const s of [-1,1]){const e=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.1,4),cm);e.position.set(s*0.08,0.52,0.3);cat.add(e);}const tl=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,5),cm);tl.position.set(0,0.4,-0.35);tl.rotation.x=0.6;cat.add(tl);cat.position.set(sp.x+1,sp.y-1.4,sp.z);scene.add(cat);
    m={type:'cat',title:'🐱 A cat is stuck on a roof! Climb up and rescue it',cat,x:sp.x+1,y:sp.y-1.4,z:sp.z};}}
@@ -747,7 +748,7 @@ function newMission(){const J=S.job;let m=null;
 function finishMission(){const J=JOBS[S.job];const pay=Math.round(J.pay*(1+0.25*rankOf(S.job))*(mission.perps?mission.perps.length:1));const r0=rankOf(S.job);S.jobXp[S.job]=(S.jobXp[S.job]||0)+1;addCash(pay);sub(`✅ Mission complete! +$${pay}`);
  if(rankOf(S.job)>r0)sub(`⭐ PROMOTED to ${J.ranks[rankOf(S.job)]}!`);mission=null;missionT=8;P.wp=null;save();if(window.radioMsg)radioMsg('Dispatch','Great work out there. Stand by for the next call.');}
 function updJobs(dt){
- if(!onDuty()){if(mission){if(mission.perps)for(const p of mission.perps)scene.remove(p.h.g);if(mission.h)scene.remove(mission.h.g);if(mission.cat)scene.remove(mission.cat);clearHideout(mission);mission=null;perps=[];}return;}
+ if(!onDuty()){if(mission){if(mission.perps)for(const p of mission.perps)scene.remove(p.h.g);if(mission.h)scene.remove(mission.h.g);if(mission.cat)scene.remove(mission.cat);if(mission.type==='help'){if(mission.npc)scene.remove(mission.npc.h.g);if(mission.mom)scene.remove(mission.mom.h.g);(mission.props||[]).forEach(o=>scene.remove(o));if(mission.dog)scene.remove(mission.dog.g);if(mission.car)mission.car.claimed=false;}clearHideout(mission);mission=null;perps=[];}return;}
  if(S.job==='police'||S.job==='swat'){heat=0;}
  if(!mission){missionT-=dt;if(missionT<=0)newMission();return;}
  const px=P.car?P.car.x:P.x,pz=P.car?P.car.z:P.z;
@@ -757,6 +758,7 @@ function updJobs(dt){
    if(Math.random()<dt*0.3&&run)say(p.x,p.y+2.3,p.z,pick(['Catch me if you can!','Too slow!','Nope!']));}
   const first=mission.perps.find(p=>!p.caught);if(first)P.wp={x:first.x,z:first.z,name:'Troublemaker'};
   if(!left){for(const p of mission.perps)setTimeout(()=>scene.remove(p.h.g),3000);clearHideout(mission);finishMission();}}
+ else if(mission.type==='help')updHelp(dt);
  else if(mission.type==='raid'){P.wp={x:mission.door.x,z:mission.door.z,name:'Hideout door'};}
  else if(mission.type==='fire'){if(mission.car.out){finishMission();}}
  else if(mission.type==='speeder'){const c=mission.car;if(!cars.includes(c)||c===P.car){mission=null;missionT=3;P.wp=null;}else P.wp={x:c.x,z:c.z,name:'Speeder'};}
@@ -1597,6 +1599,7 @@ function exitCar(){const c=P.car;if(!c)return;if(c.fire&&Math.abs(c.speed)<3)set
 function doAction(){
  if(fly){leaveHeli();return;}
  if(!P.car){const hh=nearHeli();if(hh){boardHeli(hh);return;}}
+ if(mission&&helpNear()){helpAct();return;}
  if(P.car){const sp=nearestStore(5,true);if(sp&&Math.abs(P.car.speed)<3){openStore(sp);return;}exitCar();return;}
  {const k=nearDriverWindow();if(k){openTalk(k,true);return;}}
  if(onDuty()&&(S.job==='police'||S.job==='swat')){const s0=nearestStore(3.2),c0=nearestCar(3.6),p0=nearCitizen();if(p0&&!s0&&!c0){openTalk(p0,false);return;}}
@@ -1611,6 +1614,7 @@ function updPrompt(){let t='';const K=isTouch?'Tap 🚪':'Press <b>E</b>';
  if(!t&&!P.car){if(P.climb)t='🪜 Climbing: up / down to move, jump to let go';else if(nearLadder())t='🪜 Walk into the ladder to climb';}if(!P.car){const k=nearDriverWindow();if(k)t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to talk to the driver`;else if(!t&&onDuty()&&(S.job==='police'||S.job==='swat')&&nearCitizen())t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to talk to this citizen`;}
  else if(policeCar(P.car)&&onDuty()&&(S.job==='police'||S.job==='swat')&&findPullable())t=`${isTouch?'Tap 🎯':'Press <b>F</b>'} to pull over the car ahead`;
  if(fly)t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to land & get out`;else if(!P.car&&nearHeli()){const hh=nearHeli();t=`${isTouch?'Tap 🚪':'Press <b>E</b>'} to fly ${hh.police?'Police Air 1':S.heliOwned?'your helicopter':'the helicopter ($'+HELI_COST+')'}`;}
+ if(!fly&&mission&&helpNear())t=helpPromptText();
  promptText=t;$('bAct').textContent=P.car?'⬇️':(t?'🚪':'·');}
 
 // ---------------------------------------------------------------- stores
@@ -1619,7 +1623,7 @@ function openStore(s){if(s.type==='blaster'){S.blasterSeen=1;save();}curStore=s;
 $('storeClose').onclick=()=>{iv=null;closeTalk();state='play';showScreen(null);rebuildPlayer();updWeapon();};
 function card(icon,name,desc,btnHtml,tag=''){return `<div class="card"><div class="ic">${icon}</div><div class="inf"><div class="nm">${name}${tag?`<span class="tag">${tag}</span>`:''}</div><div class="ds">${desc}</div></div>${btnHtml}</div>`;}
 const buyBtn=(cost,act,label)=>`<button class="btn sm" data-act="${act}" ${S.cash<cost?'disabled':''}>${label||'$'+fmt(cost)}</button>`;
-function renderStore(){const s=curStore;if(s.type==='talk'){renderTalk();return;}$('storeHead').textContent=`${s.icon} ${s.name}`;$('storeCash').textContent='$'+fmt(S.cash);
+function renderStore(){const s=curStore;if(s.type==='talk'){renderTalk();return;}if(s.type==='help'){renderHelp();return;}$('storeHead').textContent=`${s.icon} ${s.name}`;$('storeCash').textContent='$'+fmt(S.cash);
  const tabs={jobs:['Careers'],hospital:['Careers'],fire:['Station','Careers'],ebike:['E-Bikes'],marina:['Boats'],realty:['Homes for Sale'],home:['My Home'],blaster:['Weapons','Throwables','Upgrades'],gadget:['Gear'],style:['Customize','Characters','Accessories'],mart:['Snacks','Mischief'],cafe:['Menu','Mischief'],cars:['Cars'],bank:['Bank'],police:['Front Desk','Careers'],hotel:['Front Desk','Gift Shop'],spray:['Garage']}[s.type];
  $('storeTabs').innerHTML=tabs.length>1?tabs.map((t,i)=>`<button class="btn sm ${i===storeTab?'sel':''}" data-tab="${i}">${t}</button>`).join(''):'';
  const tab=tabs[storeTab];let h='';
@@ -1673,6 +1677,7 @@ $('storeBody').addEventListener('click',e=>{const b=e.target.closest('[data-act]
  if(a==='rest'){heat=0;clearCops();sub('😴 You rested. The cops gave up looking for you.');}
  if(a==='hroof'){const H=HOMES.find(x=>x.id===id);P.x=H.roof.x;P.z=H.roof.z;P.y=H.roof.y;P.vy=0;P.airMax=P.y;state='play';showScreen(null);rebuildPlayer();updWeapon();sub('🌇 What a view!');save();return;}
  if(a==='firetruck'){const sp=fireSpots[0];let c=cars.find(k=>k.fire&&k.mode==='parked'&&Math.hypot(k.x-sp.x,k.z-sp.z)<12);if(!c)c=makeFireTruck(sp.x,sp.z,sp.h,'parked');state='play';showScreen(null);rebuildPlayer();updWeapon();enterCar(c);save();return;}
+ if(a==='help'){helpChoice(id);return;}
  if(a==='send'){talkSay($('chatIn').value);return;}
  if(a==='say'){talkSay(decodeURIComponent(id));return;}
  if(a==='verdict'){talkVerdict(id);return;}
@@ -1887,7 +1892,7 @@ function moodLine(b,kind){const m=b.mood;const T={
  other:{nervous:'Um... okay?',grumpy:'Can I go now?',chatty:'Ha! You\'re funny, officer.',funny:'I have no idea what that means, but I like it!',sleepy:'Huh? Sorry, what?',polite:'I\'m not sure I understand, officer.'}};return T[kind][m];}
 function dirWord(dx,dz){if(Math.abs(dx)>Math.abs(dz))return dx>0?'toward the beach':'toward the mountains';return dz>0?'south':'north';}
 function npcReply(b,msg){const t=msg.toLowerCase();
- if(BADW.some(w=>t.includes(w)))return 'Whoa, let\'s keep it friendly, officer! 🙂';
+ if(isRude(t))return 'Whoa, let\'s keep it friendly, officer! 🙂';
  if(/\b(hi|hello|hey|hola|good (morning|afternoon|evening))\b/.test(t))return moodLine(b,'greet');
  if(/(license|registration|\bid\b|papers|documents)/.test(t)){b.asked.license=1;return moodLine(b,'license');}
  if(/(why|speed|fast|speeding|rushing|hurry)/.test(t)){b.asked.why=1;return moodLine(b,'why');}
@@ -1904,7 +1909,8 @@ function npcReply(b,msg){const t=msg.toLowerCase();
  if(/(dog|cat|pet)/.test(t))return 'I love animals! My dog\'s name is Cafecito.';
  if(/(food|hungry|eat|pizza|taco)/.test(t))return 'You should try the Cuban sandwiches in Little Havana!';
  return moodLine(b,'other');}
-function clean(t){let s=t;for(const w of BADW)s=s.replace(new RegExp(w,'gi'),'***');return s.slice(0,120);}
+function isRude(t){return BADW.some(w=>new RegExp('\\b'+w+'\\b','i').test(t));}
+function clean(t){let s=t;for(const w of BADW)s=s.replace(new RegExp('\\b'+w+'\\b','gi'),'***');return s.slice(0,120);}
 // drivers visible in traffic cars
 const carGlassT=new THREE.MeshPhysicalMaterial({color:'#1a2533',metalness:0.5,roughness:0.05,clearcoat:1,transparent:true,opacity:0.55});
 function addDriver(c){if(c.boat||c.bike||c.fire||c.superW)return;const t=CAR_TYPES[c.type];if(!t)return;c.brain=makeNpcBrain();const lk=randLook();const skin=mat(lk.skin||pick(SKINS),{roughness:0.6}),shirt=mat(lk.shirt||pick(CLOTH),{roughness:0.85});
@@ -1954,18 +1960,39 @@ function radioMsg(who,text,ch){if(!S.job||S.job==='citizen')return;ch=ch||'job';
  if(!radioOpen&&who!=='You')sub('📻 '+who+': '+text);renderRadio();}
 window.radioMsg=radioMsg;setTimeout(()=>{const hb=$('heliDown');if(hb){const on=e=>{e.preventDefault();e.stopPropagation();heliDownBtn=true;},off=e=>{heliDownBtn=false;};hb.addEventListener('pointerdown',on);hb.addEventListener('pointerup',off);hb.addEventListener('pointerleave',off);hb.addEventListener('pointercancel',off);}},0);window.__allies=allies;
 setTimeout(()=>{const b=$('radioBtn');if(b){b.onclick=e=>{e.stopPropagation();toggleRadio();};b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});}},0);
-function renderRadio(){const el=$('radio');if(!radioOpen){el.style.display='none';return;}el.style.display='flex';const J=S.job;
- const L=radioLog[radioCh];el.innerHTML=`<div class="rtop"><b>📻 RADIO</b><span class="rch ${radioCh==='job'?'on':''}" data-r="ch:job">${CH[J]||'Job'}</span><span class="rch ${radioCh==='all'?'on':''}" data-r="ch:all">${CH.all}</span><span class="rch" data-r="close">✕</span></div>
- <div class="rlog" id="rlog">${L.length?L.map(m=>`<div><b style="color:${m.who==='You'?'#7ed957':m.who==='Dispatch'?'#ffd54a':'#8fd0ff'}">${m.who}:</b> ${m.text.replace(/</g,'&lt;')}</div>`).join(''):'<div style="opacity:.6">Static... no calls yet.</div>'}</div>
+function radioLogHTML(){const L=radioLog[radioCh];return L.length?L.map(m=>`<div><b style="color:${m.who==='You'?'#7ed957':m.who==='Dispatch'?'#ffd54a':'#8fd0ff'}">${m.who}:</b> ${m.text.replace(/</g,'&lt;')}</div>`).join(''):'<div style="opacity:.6">Static... no calls yet. Type anything below!</div>';}
+function renderRadio(){const el=$('radio');if(!radioOpen){el.style.display='none';el.dataset.built='';return;}el.style.display='flex';const J=S.job;
+ if(el.dataset.built!==radioCh){el.dataset.built=radioCh;el.innerHTML=`<div class="rtop"><b>📻 RADIO</b><span class="rch ${radioCh==='job'?'on':''}" data-r="ch:job">${CH[J]||'Job'}</span><span class="rch ${radioCh==='all'?'on':''}" data-r="ch:all">${CH.all}</span><span class="rch" data-r="close">✕</span></div>
+ <div class="rlog" id="rlog"></div><div style="display:flex;gap:5px"><input id="radioIn" maxlength="120" placeholder="Type anything on the radio..." autocomplete="off" style="flex:1;font:14px system-ui;padding:8px;border-radius:6px;border:none;background:#e8ffe8;color:#0b1410"><button data-r="send" style="font:bold 13px system-ui;padding:8px 12px;border-radius:6px;border:none;background:#3c8b5a;color:#fff;cursor:pointer">Send</button></div>
  <div class="rbtns">${['10-4','On my way','Need backup','Mission complete'].map(q=>`<button data-r="q:${q}">${q}</button>`).join('')}</div>`;
- const lg=$('rlog');lg.scrollTop=lg.scrollHeight;}
+  const inp=$('radioIn');inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')radioSend();if(e.key==='Escape')inp.blur();});inp.addEventListener('keyup',e=>e.stopPropagation());inp.addEventListener('keypress',e=>e.stopPropagation());}
+ const lg=$('rlog');lg.innerHTML=radioLogHTML();lg.scrollTop=lg.scrollHeight;}
+function radioSend(){const inp=$('radioIn');if(!inp)return;const raw=inp.value.trim();if(!raw)return;inp.value='';const ch=radioCh;radioMsg('You',clean(raw),ch);setTimeout(()=>radioReply(raw,ch),900);}
+function radioReply(raw,ch){const t=raw.toLowerCase(),J=S.job,mates=CALLSIGN[J]||['Dispatch'],mate=pick(mates);const say2=(w,x)=>radioMsg(w,x,ch);
+ if(isRude(t)){say2('Dispatch','Let\'s keep it friendly on the radio, officer! 🙂');return;}
+ if(/backup|back up|reinforce/.test(t)){callBackup(ch);return;}
+ if(/where.*(call|mission|go)|location|address|waypoint/.test(t)){say2('Dispatch',P.wp?`The call is at ${streetLabel(P.wp.x,P.wp.z)}. It's on your map. 📍`:'No active calls right now. Stand by.');return;}
+ if(/where are you|your location|your 20/.test(t)){say2(mate,`I'm at ${pick(NS_NAMES)} & ${pick(EW_NAMES)}.`);return;}
+ if(/where am i|my location/.test(t)){say2('Dispatch',`You're at ${streetLabel(P.x,P.z)}.`);return;}
+ if(/mission|call|job|anything for me/.test(t)){say2('Dispatch',mission?`Current call: ${mission.title}`:'All quiet right now. A new call is coming soon.');return;}
+ if(/done|complete|finished|all clear/.test(t)){say2('Dispatch',mission?'Negative, the call is still open. Check your map.':'Copy, great work! Stand by.');return;}
+ if(/hi\b|hello|hey|good morning|good evening|radio check|loud and clear/.test(t)){say2(mate,pick(['Hey partner! Loud and clear. 📻','Copy you loud and clear!','Hey there! Good to hear you.']));return;}
+ if(/joke|funny|bored/.test(t)){say2(mate,pick(JOKES));return;}
+ if(/thank|thanks|gracias/.test(t)){say2(mate,'Anytime, partner! 👍');return;}
+ if(/lunch|food|hungry|donut|cafecito|coffee|pizza/.test(t)){say2(mate,pick(['Cafecito break? I\'m buying! ☕','Donuts at the station! 🍩','Let\'s grab Cuban sandwiches after this call! 🥪']));return;}
+ if(/help|emergency|sos|mayday/.test(t)){say2('Dispatch','Copy! Help is on the way. Hang tight!');if(mission)callBackup(ch);return;}
+ if(/chase|pursuit|fast|speed|running/.test(t)){say2(mate,'Copy, pursuit in progress! Stay safe out there. 🚨');return;}
+ if(/weather|rain|hot|sun/.test(t)){say2('Dispatch','Sunny and hot in Miami, as always. ☀️');return;}
+ if(/los angeles|california|road trip|i-10|highway/.test(t)){say2('Dispatch','Take the ramp north of the city onto I-10 West. 2,730 miles to LA! 🛣️');return;}
+ if(/how are you|status|what's up|whats up/.test(t)){say2(mate,pick(['All good on patrol! 🚓','Just helped a lady find her keys!','Traffic is busy on Biscayne Blvd.','Quiet shift so far!']));return;}
+ say2(mate,pick(['Copy that! 📻','10-4, loud and clear.','Roger that, partner.','Say again? Lots of static... 📻','Copy. Nice work out there!']));}
 function toggleRadio(){if(!S.job||S.job==='citizen'){sub('📻 You need an emergency job to use the radio. Visit the Job Center!');return;}radioOpen=!radioOpen;renderRadio();}
 function radioQuick(q){const ch=radioCh;radioMsg('You',q,ch);const J=S.job,mates=CALLSIGN[J]||['Dispatch'];
  setTimeout(()=>{if(q==='10-4')radioMsg(pick(mates),pick(['Copy that.','10-4, partner.','Roger.']),ch);
   else if(q==='On my way'){if(mission)radioMsg('Dispatch','Copy, '+(mission.title.replace(/\(.*\)/,'').slice(0,60))+'. Waypoint is on your map.',ch);else radioMsg('Dispatch','No active call right now. Stand by.',ch);}
   else if(q==='Need backup')callBackup(ch);
   else if(q==='Mission complete'){if(!mission)radioMsg('Dispatch','Copy. Nice work. Next call coming soon.',ch);else radioMsg('Dispatch','Negative, the call is still open. Check your map waypoint.',ch);}},900);}
-document.addEventListener('click',e=>{const t=e.target.closest('[data-r]');if(!t)return;const [a,v]=t.dataset.r.split(':');if(a==='ch'){radioCh=v;renderRadio();}else if(a==='close'){radioOpen=false;renderRadio();}else if(a==='q')radioQuick(v);});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-r]');if(!t)return;const [a,v]=t.dataset.r.split(':');if(a==='send'){radioSend();return;}if(a==='ch'){radioCh=v;renderRadio();}else if(a==='close'){radioOpen=false;renderRadio();}else if(a==='q')radioQuick(v);});
 // ---- backup: AI teammates come to help
 function callBackup(ch){if(backupT>0){radioMsg('Dispatch','Backup is already rolling. Hang tight!',ch);return;}if(!mission){radioMsg('Dispatch','No active call. Backup not needed.',ch);return;}
  const J=S.job,who=pick(CALLSIGN[J]);backupT=40;radioMsg(who,'Backup en route! ETA 10 seconds.',ch);
@@ -2272,6 +2299,63 @@ function streetLabel(x,z){if(z<-45||x<-262){const r=tripRegion(x);if(Math.abs(z-
  if(x<-40)return'⛰ Rascal Mountains';if(x>CITY+7)return x>CITY+66?'🌊 Atlantic Ocean':'🏖 South Beach';
  const i=Math.round(x/CELL),j=Math.round(z/CELL);const onNS=Math.abs(x-i*CELL)<ROAD/2+1&&i>=0&&i<=NB,onEW=Math.abs(z-j*CELL)<ROAD/2+1&&j>=0&&j<=NB;
  if(onNS&&onEW)return`${NS_NAMES[i]} & ${EW_NAMES[j]}`;if(onNS)return NS_NAMES[i];if(onEW)return EW_NAMES[j];return DNAME[districtAt(x,z)]||'Miami';}
+
+// ================= POLICE HELP MISSIONS (helping people)
+const HELP_KINDS=['homeless','lost','tourist','flat','elder','dog'];
+function helpNpc(look,x,z,scale=1){const h=makeHuman(look,{});h.g.position.set(x,0.16,z);if(scale!==1)h.g.scale.setScalar(scale);scene.add(h.g);animHuman(h,0,false,0.02);return{h,x,z,y:0.16,vy:0,onGround:true,support:null,landVel:0};}
+function propAt(list,geo,m,x,y,z,ry=0){const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.y=ry;o.castShadow=true;scene.add(o);list.push(o);return o;}
+function signPlate(text,col){const [c,x]=cvs(256,128);x.fillStyle='#c9a66b';x.fillRect(0,0,256,128);x.fillStyle=col||'#2a2a2a';x.font='bold 30px Comic Sans MS, sans-serif';x.textAlign='center';const w=text.split('|');w.forEach((t,i)=>x.fillText(t,128,48+i*40));return toTex(c,false);}
+function makeDog(col){const g=new THREE.Group();const m=mat(col,{roughness:0.9});const b=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.3,0.7),m);b.position.y=0.42;g.add(b);const hd=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.26,0.3),m);hd.position.set(0,0.62,0.42);g.add(hd);
+ const sn=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.12,0.16),mat('#2a2a2a'));sn.position.set(0,0.56,0.62);g.add(sn);for(const s of[-1,1]){const e=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.16,0.06),m);e.position.set(s*0.11,0.8,0.36);g.add(e);}
+ const legs=[];for(const a of[-0.11,0.11])for(const b2 of[-0.25,0.25]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.3,0.08),m);l.position.set(a,0.15,b2);g.add(l);legs.push(l);}const t=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.3),m);t.position.set(0,0.58,-0.45);t.rotation.x=-0.6;g.add(t);g.userData.legs=legs;g.userData.tail=t;g.traverse(o=>{if(o.isMesh)o.castShadow=true;});return g;}
+function newHelpMission(){const kind=window.__forceHelp||pick(HELP_KINDS);const s=sideSpot(40,130);const props=[];let m={type:'help',kind,props,stage:0,x:s.x,z:s.z};
+ if(kind==='homeless'){m.npc=helpNpc({body:pick(['man','woman']),hs:'short',skin:pick(SKINS),hair:'#4a4a4a',shirt:pick(['#6b5a4a','#4a5a6b','#5a6b4a']),pants:'#3a3a3a',shoes:'#2a2a2a'},s.x,s.z);
+  propAt(props,new THREE.BoxGeometry(0.9,0.12,2),mat('#4a6b8a'),s.x+1,0.2,s.z,0.3);propAt(props,new THREE.BoxGeometry(0.6,0.5,0.5),mat('#a8865a'),s.x-0.9,0.4,s.z+0.4);
+  const sg=propAt(props,new THREE.PlaneGeometry(0.8,0.4),new THREE.MeshBasicMaterial({map:signPlate('Anything|helps 🙂'),side:THREE.DoubleSide}),s.x-0.4,1.0,s.z+0.55);
+  m.title='💙 Someone who has no home needs help. Go see what they need';}
+ else if(kind==='lost'){m.npc=helpNpc(Object.assign(randLook(),{}),s.x,s.z,0.62);const p=sideSpot(50,110);m.mom=helpNpc(randLook(),p.x,p.z);m.dest={x:p.x,z:p.z};m.title='🧒 A lost kid is crying! Help them find their mom';}
+ else if(kind==='tourist'){m.npc=helpNpc(Object.assign(randLook(),{shirt:'#ff7eb6'}),s.x,s.z);propAt(props,new THREE.BoxGeometry(0.45,0.6,0.25),mat('#2b3a55'),s.x+0.5,0.46,s.z);m.title='🗺️ A tourist is lost and needs directions';
+  m.q=pick([{ask:'Which way to the beach and the ocean?',right:'East, toward the ocean 🌊',wrong:['West, toward the mountains ⛰','North, onto Interstate 10 🛣️']},{ask:'How do I drive to California?',right:'North to Interstate 10, then go west 🛣️',wrong:['East into the ocean 🌊','Just walk on the beach 🏖']},{ask:'Where are the big mountains?',right:'West, past the edge of the city ⛰',wrong:['East, on the island 🏝','Under the highway 🛣️']}]);}
+ else if(kind==='flat'){const c=makeCar(s.x,s.z,Math.random()*6,'parked');c.claimed=true;c.flat=true;c.g.rotation.z=0.05;m.car=c;m.npc=helpNpc(randLook(),s.x+2.5,s.z+1);m.fix=0;m.title='🔧 A driver has a flat tire! Help them change it';}
+ else if(kind==='elder'){m.npc=helpNpc({body:pick(['man','woman']),hs:'short',skin:pick(SKINS),hair:'#e8e8e8',shirt:'#a88abf',pants:'#5a5a6a',shoes:'#3a2a1a'},s.x,s.z);const p=sideSpot(30,60);m.dest={x:p.x,z:p.z};m.title='👵 Help a grandma get safely across the street';
+  const flag=propAt(props,new THREE.CylinderGeometry(0.05,0.05,2.4,6),M.pole,p.x,1.2,p.z);}
+ else if(kind==='dog'){const dg=makeDog(pick(['#c8a070','#2a2a2a','#f2f2f2','#8a5a3a']));dg.position.set(s.x,0.15,s.z);scene.add(dg);m.dog={g:dg,x:s.x,z:s.z,y:0.15,vy:0,onGround:true,support:null,landVel:0,caught:false};const p=sideSpot(40,90);m.npc=helpNpc(randLook(),p.x,p.z);m.owner=true;m.title='🐶 A dog ran away from its owner! Catch the doggy';}
+ return m;}
+function helpNear(){const m=mission;if(!m||m.type!=='help'||P.car)return false;const n=m.npc;if(!n||m.stage===9)return false;if(m.kind==='dog')return m.dog.caught&&Math.hypot(P.x-n.x,P.z-n.z)<3;if(m.kind==='flat')return Math.hypot(P.x-m.car.x,P.z-m.car.z)<4.5;if((m.kind==='lost'||m.kind==='elder')&&m.stage>0||m.kind==='homeless'&&m.stage===2)return false;return Math.hypot(P.x-n.x,P.z-n.z)<2.6;}
+function helpPromptText(){const m=mission;const K=isTouch?'Tap 🚪':'Press <b>E</b>';return m.kind==='flat'?`${K} to help change the tire (${Math.round(m.fix*25)}%)`:m.kind==='dog'?`${K} to give the doggy back`:`${K} to talk and help`;}
+function helpDone(msg,bonus){const m=mission;say(m.npc.x,2.3,m.npc.z,msg);if(bonus)addCash(bonus);m.stage=9;const keep=m;setTimeout(()=>{if(keep.npc)scene.remove(keep.npc.h.g);if(keep.mom)scene.remove(keep.mom.h.g);for(const o of keep.props)scene.remove(o);if(keep.dog)scene.remove(keep.dog.g);if(keep.car){keep.car.claimed=false;keep.car.flat=false;keep.car.g.rotation.z=0;}},6000);finishMission();}
+function helpAct(){const m=mission;
+ if(m.kind==='flat'){m.fix++;burst(m.car.x,0.5,m.car.z,'#c9ced6',8,3,0.4);say(m.car.x,2,m.car.z,pick(['*clank*','*twist*','*pump pump*','*click*']));if(m.fix>=4){m.car.g.rotation.z=0;helpDone('Thank you, officer! You saved my day! 🙌');}return;}
+ if(m.kind==='dog'){helpDone('My puppy! Thank you SO much! 🐶❤️');return;}
+ if(m.kind==='lost'){m.stage=1;say(m.npc.x,1.7,m.npc.z,'*sniff* I can\'t find my mom! Can you help me?');sub('🧒 The kid will follow you. Walk them to their mom (📍 on the map)');P.wp={x:m.dest.x,z:m.dest.z,name:'Mom'};return;}
+ if(m.kind==='elder'){m.stage=1;say(m.npc.x,2.3,m.npc.z,'Oh thank you, dear! I walk slowly, okay?');sub('👵 Walk slowly with grandma to the flag (📍 on the map)');P.wp={x:m.dest.x,z:m.dest.z,name:'Other side'};return;}
+ curStore={type:'help',name:'Help',icon:'💙'};state='store';showScreen('store');renderStore();}
+function renderHelp(){const m=mission;$('storeTabs').innerHTML='';$('storeCash').textContent='';let h='';
+ if(!m||m.type!=='help'){$('storeBody').innerHTML='<div class="sec">All done!</div>';return;}
+ if(m.kind==='homeless'){$('storeHead').textContent='💙 Helping someone in need';h+=`<div class="card"><div class="inf"><div class="nm">"Hi officer. I don't have a home right now and I'm really hungry and cold."</div><div class="ds">How do you want to help? Every choice is kind!</div></div></div>`;
+  h+=`<button class="btn" data-act="help:food">🥪 Share a sandwich and water</button><button class="btn" data-act="help:blanket">🧥 Give a warm blanket</button><button class="btn pink" data-act="help:shelter">🏠 Drive them to Hope Shelter (bonus $50)</button>`;}
+ else if(m.kind==='tourist'){$('storeHead').textContent='🗺️ Lost tourist';const opts=[m.q.right,...m.q.wrong].sort(()=>Math.random()-0.5);m.opts=opts;h+=`<div class="card"><div class="inf"><div class="nm">"Excuse me, officer! ${m.q.ask}"</div>${m.wrongT?'<div class="ds">🤔 "Hmm, are you sure? That doesn\'t sound right..."</div>':''}</div></div>`;opts.forEach((o,i)=>h+=`<button class="btn" data-act="help:t${i}">${o}</button>`);}
+ $('storeBody').innerHTML=h;}
+function helpChoice(id){const m=mission;if(!m)return;
+ if(m.kind==='homeless'){closeStoreUI();if(id==='shelter'){m.stage=2;m.npc.h.g.visible=false;const p=sideSpot(70,150);m.dest={x:p.x,z:p.z};const sg=propAt(m.props,new THREE.PlaneGeometry(3,0.8),new THREE.MeshBasicMaterial({map:signTex('HOPE SHELTER 💙','#7fd6e8'),side:THREE.DoubleSide}),p.x,3,p.z);propAt(m.props,new THREE.CylinderGeometry(0.06,0.06,3,6),M.pole,p.x,1.5,p.z);
+   sub('🏠 They hop in with you. Take them to Hope Shelter (📍 on the map)');P.wp={x:p.x,z:p.z,name:'Hope Shelter'};return;}
+  helpDone(id==='food'?'Thank you so much! That\'s really kind. 🥪':'This is so warm. Thank you, officer! 💙');return;}
+ if(m.kind==='tourist'){const pickd=m.opts[+id.slice(1)];if(pickd===m.q.right){closeStoreUI();helpDone('Thank you! Miami police are the best! 📸');}else{m.wrongT=1;renderHelp();}}}
+function closeStoreUI(){state='play';showScreen(null);curStore=null;}
+function updHelp(dt){const m=mission;if(m.stage===9)return;const n=m.npc;const pxx=P.car?P.car.x:P.x,pzz=P.car?P.car.z:P.z;
+ const face=(o,tx,tz)=>{o.h.g.rotation.y=Math.atan2(tx-o.x,tz-o.z);};
+ if(n&&n.h.g.visible&&!(m.stage>0&&(m.kind==='lost'||m.kind==='elder'))){if(Math.hypot(pxx-n.x,pzz-n.z)<10)face(n,pxx,pzz);animHuman(n.h,0,false,dt);}
+ if(m.mom)animHuman(m.mom.h,0,false,dt);
+ if(Math.random()<dt*0.25&&m.stage===0&&n){const t={homeless:'Could anyone help? 💙',lost:'Mommy? Where are you? 😢',tourist:'Excuse me! I\'m lost!',flat:'Oh no, my tire is flat!',elder:'This street is so busy...',dog:'Has anyone seen my dog?!'}[m.kind];say(n.x,2.3*(m.kind==='lost'?0.7:1),n.z,t);}
+ if(m.kind==='dog'&&!m.dog.caught){const d=m.dog,dx=d.x-pxx,dz=d.z-pzz,dist=Math.hypot(dx,dz)||1;const run=dist<14?6.2:0.8;const mx=dist<14?dx/dist:Math.sin(clock*0.7),mz=dist<14?dz/dist:Math.cos(clock*0.7);d.vy-=26*dt;stepBody(d,mx*run*dt,d.vy*dt,mz*run*dt,0.3,0.8,0.5);d.x=clamp(d.x,-30,CITY+40);d.z=clamp(d.z,-30,CITY+30);
+  d.g.position.set(d.x,d.y,d.z);d.g.rotation.y=Math.atan2(mx,mz);d.g.userData.legs.forEach((l,i)=>l.rotation.x=Math.sin(clock*18+i*Math.PI)*0.6*Math.min(1,run/3));d.g.userData.tail.rotation.y=Math.sin(clock*20)*0.5;
+  P.wp={x:d.x,z:d.z,name:'Doggy'};if(Math.random()<dt*0.5)say(d.x,1.3,d.z,'Woof! Woof!');if(!P.car&&dist<1.6){d.caught=true;sub('🐶 Got the doggy! Take it back to its owner (📍)');P.wp={x:n.x,z:n.z,name:'Owner'};}}
+ if(m.kind==='dog'&&m.dog.caught){const d=m.dog;const tx=pxx-Math.sin(P.yaw)*1.4,tz=pzz-Math.cos(P.yaw)*1.4;const dx=tx-d.x,dz=tz-d.z,dist=Math.hypot(dx,dz);if(P.car){d.g.visible=false;d.x=pxx;d.z=pzz;}else{d.g.visible=true;if(dist>0.4){const sp=Math.min(8,dist*3);d.x+=dx/dist*sp*dt;d.z+=dz/dist*sp*dt;}d.y=P.y;d.g.position.set(d.x,d.y,d.z);d.g.rotation.y=Math.atan2(dx,dz);d.g.userData.tail.rotation.y=Math.sin(clock*25)*0.7;}}
+ if((m.kind==='lost'||m.kind==='elder')&&m.stage===1){const spd=m.kind==='elder'?2.2:4.5;const tx=pxx-Math.sin(P.yaw)*1.3,tz=pzz-Math.cos(P.yaw)*1.3;
+  if(P.car&&Math.hypot(n.x-pxx,n.z-pzz)<6){n.h.g.visible=false;n.inCar=true;}if(n.inCar){if(P.car){n.x=pxx;n.z=pzz;}else{n.inCar=false;n.h.g.visible=true;n.x=P.x+1;n.z=P.z+1;}}
+  else{const dx=tx-n.x,dz=tz-n.z,dist=Math.hypot(dx,dz);let sp=0;if(dist>0.8){sp=Math.min(spd,dist*2);n.vy-=26*dt;stepBody(n,dx/dist*sp*dt,n.vy*dt,dz/dist*sp*dt,0.3,1.6,0.5);}n.h.g.position.set(n.x,n.y,n.z);if(dist>0.3)face(n,tx,tz);animHuman(n.h,sp,false,dt);}
+  if(Math.hypot(n.x-m.dest.x,n.z-m.dest.z)<3.5&&!n.inCar){if(m.mom){face(m.mom,n.x,n.z);helpDone('MOMMY!! 🤗',0);say(m.mom.x,2.3,m.mom.z,'Thank you, officer! I was so worried! 💕');}else helpDone('We made it! Thank you, sweetie! 👵💕');}}
+ if(m.kind==='homeless'&&m.stage===2){if(Math.hypot(pxx-m.dest.x,pzz-m.dest.z)<9){n.h.g.visible=true;n.x=m.dest.x+1.5;n.z=m.dest.z+1.5;n.h.g.position.set(n.x,0.16,n.z);helpDone('A warm bed and dinner! Thank you, officer! 💙',50);}}}
 
 // ---------------------------------------------------------------- spawn world actors
 for(let i=0;i<(isTouch?20:26);i++)spawnTraffic(false);
