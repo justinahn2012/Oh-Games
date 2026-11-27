@@ -424,7 +424,7 @@ function buildGround(){
   coinSpots.push({x,y:5.4,z});starSpots.push({x,y:5.6,z});}
  for(let z=-20;z<CITY+30;z+=9){if(rnd()<0.4)continue;const x=CITY+28+R(0,14);addStatic(new THREE.CylinderGeometry(0.04,0.04,2.4,5),M.white,x,1.2,z);addStatic(new THREE.ConeGeometry(1.5,0.5,10),mat(rpick(['#ff4fa3','#2ec4b6','#ffd23f','#ffffff','#ff7a59'])),x,2.45,z);
   addStatic(new THREE.BoxGeometry(0.7,0.15,1.8),M.white,x+1,0.3,z);}
- addSolid(-290,-258,0,140,-80,CITY+80);addSolid(CITY+330,CITY+360,0,80,-80,CITY+80);addSolid(-290,CITY+360,0,140,-80,-40);addSolid(-290,CITY+360,0,140,CITY+40,CITY+80);
+ addSolid(-290,-258,0,140,-80,CITY+80);addSolid(CITY+330,CITY+360,0,80,-80,CITY+80);addSolid(-290,CITY+360,0,140,CITY+40,CITY+80);
 }
 
 function streetFurniture(){
@@ -2384,7 +2384,7 @@ function update(dt){
  for(const c of cars){const ox=c.x,oz=c.z;c.ox=ox;c.oz=oz;
   if(c.mode==='traffic')updTraffic(c,dt);else if(c.mode==='hwy')updHwy(c,dt);else if(c.mode==='pulled')updPulled(c,dt);else if(c.mode==='police'&&state!=='title')updPolice(c,dt);else if(c.mode==='wrecked'){c.wreckT+=dt;if(!c.out&&Math.random()<dt*7)burst(c.x+MR(-0.8,0.8),1.0,c.z+MR(-0.8,0.8),Math.random()<0.55?'#ff7a1a':'#555555',1,1,1.2,-2.5);}
   if(c.fire){updFireTruck(c,dt);if(c.restT>0)c.restT-=dt;}else if(c===P.car&&c.red&&c.blue&&!c.boat){const on=Math.sin(clock*12)>0;c.red.color.set(on?'#ff2020':'#300000');c.blue.color.set(on?'#000830':(c.amb?'#ffffff':'#2050ff'));}
-  c.x=clamp(c.x,-254,CITY+320);c.z=clamp(c.z,-34,CITY+34);c.dx=c.x-ox;c.dz=c.z-oz;
+  c.x=clamp(c.x,-12900,CITY+320);c.z=clamp(c.z,-850,CITY+34);c.dx=c.x-ox;c.dz=c.z-oz;
   c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;if(!c.boat){const g0=Math.max(groundAt(c.x,c.z),terrainH(c.x,c.z));if(c.ay===undefined){c.ay=g0;c.avy=0;c.g.rotation.order='YXZ';}
    if(c.ay>g0+0.05||c.avy>0.5){c.avy-=24*dt;c.ay+=c.avy*dt;if(c.ay<=g0){if(c.avy<-9&&c===P.car){shake=0.25;burst(c.x,g0+0.2,c.z,'#bfae8a',8,3,0.4);}c.ay=g0;c.avy=0;}}
    else{const dg=g0-c.ay,vy=dg/Math.max(dt,0.001);c.ay=g0;c.avy=(vy>2.5&&dg<0.12)?Math.min(vy,14):0;if(c.x<MX1+3){const fx=Math.sin(c.h),fz=Math.cos(c.h);c.g.rotation.x=-Math.atan2(terrainH(c.x+fx*1.6,c.z+fz*1.6)-terrainH(c.x-fx*1.6,c.z-fz*1.6),3.2);}else c.g.rotation.x=0;}
