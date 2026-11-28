@@ -473,7 +473,7 @@ function buildGround(){
   coinSpots.push({x,y:5.4,z});starSpots.push({x,y:5.6,z});}
  for(let z=-20;z<CITY+30;z+=9){if(rnd()<0.4)continue;const x=CITY+28+R(0,14);addStatic(new THREE.CylinderGeometry(0.04,0.04,2.4,5),M.white,x,1.2,z);addStatic(new THREE.ConeGeometry(1.5,0.5,10),mat(rpick(['#ff4fa3','#2ec4b6','#ffd23f','#ffffff','#ff7a59'])),x,2.45,z);
   addStatic(new THREE.BoxGeometry(0.7,0.15,1.8),M.white,x+1,0.3,z);}
- addSolid(-290,-258,0,140,-80,CITY+80);addSolid(CITY+330,CITY+360,0,80,-80,CITY+80);addSolid(-290,CITY+360,0,140,CITY+40,CITY+80);
+ addSolid(-13300,-13260,0,140,-900,960);addSolid(CITY+640,CITY+680,0,80,-900,960);addSolid(-13300,CITY+680,0,140,930,970);addSolid(-13300,CITY+680,0,140,-900,-870);
 }
 
 function streetFurniture(){
@@ -2449,7 +2449,7 @@ function busStop(x,z,a){// a: angle so that local +z faces the road
  [px,pz]=off(-0.3,-0.35);addStatic(R2(2.4,0.08,0.45),benchWood,px,0.55,pz,false);
  [px,pz]=off(0,0.75);addStatic(R2(3.6,0.18,0.05),GL('#5ef0ff',1.0),px,2.6,pz,false);
  [px,pz]=off(-1.5,1.0);addStatic(new THREE.CylinderGeometry(0.05,0.05,2.8,6),M.pole,px,1.4,pz,false);addStatic(R2(0.6,0.6,0.05),mat('#2c7be5'),px,2.6,pz,false);
- {const [ax,az]=off(0,0);addSolid(ax-1.3,ax+1.3,0,2.6,az-1.3,az+1.3).stamp=0;}}
+ {const [ax,az]=off(0,0);addSolid(ax-1.3,ax+1.3,2.5,2.7,az-1.3,az+1.3);}}
 function hydrant(x,z,m){addStatic(new THREE.CylinderGeometry(0.17,0.2,0.6,10),m,x,0.45,z,false);addStatic(new THREE.SphereGeometry(0.18,10,6,0,Math.PI*2,0,Math.PI/2),m,x,0.75,z,false);addStatic(new THREE.CylinderGeometry(0.07,0.07,0.5,6).rotateZ(Math.PI/2),m,x,0.55,z,false);}
 function meter(x,z){addStatic(new THREE.CylinderGeometry(0.04,0.04,1.1,6),blackMetal,x,0.7,z,false);addStatic(new THREE.BoxGeometry(0.22,0.32,0.18),mat('#9aa3ad',{metalness:0.6,roughness:0.35}),x,1.35,z,false);}
 function trash(x,z,c){addStatic(new THREE.CylinderGeometry(0.3,0.26,0.95,12),mat(c,{roughness:0.5}),x,0.62,z,false);addStatic(new THREE.CylinderGeometry(0.33,0.33,0.08,12),blackMetal,x,1.12,z,false);}
@@ -2580,7 +2580,7 @@ function buildChunk(k){if(chunks[k])return;chunks[k]=true;const [xa,xb]=chunkX(k
   if(bridge){addStatic(new THREE.BoxGeometry(L2,2.2,2*HW+2),TM.concrete,mx,-1.08,HZ,false);for(let x=hx0-20;x>hx1;x-=40)for(const s of[-1,1])addStatic(new THREE.CylinderGeometry(1.1,1.3,6,10),TM.concrete,x,-4,HZ+s*6,false);
    for(const s of[-1,1]){addStatic(new THREE.BoxGeometry(L2,0.9,0.4),TM.concrete,mx,0.45,HZ+s*(HW+0.8),false);addSolid(hx1,hx0,0,1.0,HZ+s*(HW+0.8)-0.25,HZ+s*(HW+0.8)+0.25);}}
   addStatic(new THREE.BoxGeometry(L2,0.06,2*HW),TM.asph,mx,0.02,HZ,false);
-  {const m0=Math.min(hx0,-30);if(m0>hx1){addStatic(new THREE.BoxGeometry(m0-hx1,0.8,0.6),TM.concrete,(m0+hx1)/2,0.4,HZ,false);addSolid(hx1,m0,0,0.8,HZ-0.3,HZ+0.3);}}
+  {const m0=Math.min(hx0-25,-30);if(m0>hx1){addStatic(new THREE.BoxGeometry(m0-hx1,0.8,0.6),TM.concrete,(m0+hx1)/2,0.4,HZ,false);addSolid(hx1,m0,0,0.8,HZ-0.3,HZ+0.3);}}
   for(const s of[-1,1]){addStatic(new THREE.BoxGeometry(L2,0.02,0.18),TM.yellow,mx,0.06,HZ+s*1.0,false);addStatic(new THREE.BoxGeometry(L2,0.02,0.18),TM.white,mx,0.06,HZ+s*(HW-1.4),false);
    for(let x=hx0-3;x>hx1;x-=12)addStatic(new THREE.BoxGeometry(4,0.02,0.15),TM.white,x,0.06,HZ+s*5.2,false);}
   for(let x=hx0-30;x>hx1;x-=80){addStatic(new THREE.CylinderGeometry(0.12,0.16,9,8),TM.metal,x,4.5,HZ,false);for(const s of[-1,1]){addStatic(new THREE.BoxGeometry(0.12,0.12,3),TM.metal,x,8.9,HZ+s*1.5,false);addStatic(new THREE.BoxGeometry(0.5,0.12,0.9),mat('#fff6d8',{emissive:'#fff1c4',emissiveIntensity:0.6}),x,8.8,HZ+s*2.8,false);}}}
@@ -3121,7 +3121,7 @@ function buildMiamiAirport(){const {x,z}=MIA_AIR;addStatic(new THREE.BoxGeometry
 function ctryHuman(look,x,z){const h=makeHuman(look,randEq());h.g.position.set(x,0.16,z);h.g.rotation.y=Math.random()*6;scene.add(h.g);ctryNpcs.push({h,x,z,t:Math.random()*10,brain:makeNpcBrain(),home:{x,z},y:0.16});}
 function buildCountry(c){if(builtC[c.id])return;builtC[c.id]=true;const {cx,cz}=c;const r=mulberry32(c.cx+77);const R=(a,b)=>a+r()*(b-a);
  addStatic(new THREE.PlaneGeometry(900,900).rotateX(-Math.PI/2),mat(c.ground,{roughness:1}),cx,-0.02,cz,false);
- const lim=330;addSolid(cx-lim-5,cx-lim,0,60,cz-lim,cz+lim);addSolid(cx+lim,cx+lim+5,0,60,cz-lim,cz+lim);addSolid(cx-lim,cx+lim,0,60,cz-lim-5,cz-lim);addSolid(cx-lim,cx+lim,0,60,cz+lim,cz+lim+5);
+ const lim=440;addSolid(cx-lim-5,cx-lim,0,60,cz-lim,cz+lim);addSolid(cx+lim,cx+lim+5,0,60,cz-lim,cz+lim);addSolid(cx-lim,cx+lim,0,60,cz-lim-5,cz-lim);addSolid(cx-lim,cx+lim,0,60,cz+lim,cz+lim+5);
  // streets: a main avenue (x) and a cross street (z)
  const road=(x,z,w,d)=>{addStatic(new THREE.BoxGeometry(w,0.05,d),TM.asph,x,0.02,z,false);};road(cx,cz,600,14);road(cx,cz,14,600);for(let i=-280;i<280;i+=12){addStatic(new THREE.BoxGeometry(4,0.02,0.15),TM.white,cx+i,0.05,cz,false);addStatic(new THREE.BoxGeometry(0.15,0.02,4),TM.white,cx,0.05,cz+i,false);}
  const sidew=(x,z,w,d)=>addStatic(new THREE.BoxGeometry(w,0.14,d),mat('#cfc8bc'),x,0.07,z,false);sidew(cx,cz-10,600,6);sidew(cx,cz+10,600,6);
@@ -3502,7 +3502,7 @@ function update(dt){
  for(const c of cars){const ox=c.x,oz=c.z;c.ox=ox;c.oz=oz;
   if(c.mode==='traffic')updTraffic(c,dt);else if(c.mode==='hwy')updHwy(c,dt);else if(c.mode==='pulled')updPulled(c,dt);else if(c.mode==='police'&&state!=='title')updPolice(c,dt);else if(c.mode==='wrecked'){c.wreckT+=dt;if(!c.out&&Math.random()<dt*7)burst(c.x+MR(-0.8,0.8),1.0,c.z+MR(-0.8,0.8),Math.random()<0.55?'#ff7a1a':'#555555',1,1,1.2,-2.5);}
   if(c.fire){updFireTruck(c,dt);if(c.restT>0)c.restT-=dt;}else if(c===P.car&&c.red&&c.blue&&!c.boat){const on=Math.sin(clock*12)>0;c.red.color.set(on?'#ff2020':'#300000');c.blue.color.set(on?'#000830':(c.amb?'#ffffff':'#2050ff'));}
-  if(c.z<3000){c.x=clamp(c.x,-12900,CITY+320);c.z=clamp(c.z,-850,CITY+34);}c.dx=c.x-ox;c.dz=c.z-oz;
+  if(c.z<3000){c.x=clamp(c.x,-13250,CITY+630);c.z=clamp(c.z,-860,920);}c.dx=c.x-ox;c.dz=c.z-oz;
   c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.h;if(!c.boat){const g0=Math.max(groundAt(c.x,c.z),terrainH(c.x,c.z));if(c.ay===undefined){c.ay=g0;c.avy=0;c.g.rotation.order='YXZ';}
    if(c.ay>g0+0.05||c.avy>0.5){c.avy-=24*dt;c.ay+=c.avy*dt;if(c.ay<=g0){if(c.avy<-9&&c===P.car){shake=0.25;burst(c.x,g0+0.2,c.z,'#bfae8a',8,3,0.4);}c.ay=g0;c.avy=0;}}
    else{const dg=g0-c.ay,vy=dg/Math.max(dt,0.001);c.ay=g0;c.avy=(vy>2.5&&(dg<0.12||rampH(c.x,c.z)>0.05))?Math.min(vy,14):0;if(c.x<MX1+3||rampH(c.x,c.z)>0.01){const fx=Math.sin(c.h),fz=Math.cos(c.h);c.g.rotation.x=-Math.atan2(terrainH(c.x+fx*1.6,c.z+fz*1.6)-terrainH(c.x-fx*1.6,c.z-fz*1.6),3.2);}else c.g.rotation.x=0;}
@@ -3525,7 +3525,7 @@ function update(dt){
 function loop(now){const dt=Math.min(0.05,(now-last)/1000)*(wheelOpen?0.2:1);last=now;update(dt*slowMo);composer.render();requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 window.__dbg={cam:(y,p)=>{camYaw=y;camPitch=p;},spawnOfficer,makeHuman,rebuild:()=>rebuildPlayer(),S,get model(){return model;}};
-window.__game={flyTo,get builtC(){return builtC},get fly(){return fly},helis,makeCar,carGeos,makePoliceMoto,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
+window.__game={solids,flyTo,get builtC(){return builtC},get fly(){return fly},helis,makeCar,carGeos,makePoliceMoto,P,cars,officers,stores,peds,addHeat,busted,S,W,spawnOfficer,openWheel,closeWheel,updWeapon,setG:v=>{curG=v;},setCam:v=>{camYaw=v;},spawnSwat,get heli(){return heli;},ladders,get aerial(){return aerial;},get mission(){return mission;},newMission,get state(){return state;},get curW(){const w=curWeapon();return w&&w.id;}};
 </script>
 </body>
 </html>
